@@ -23,8 +23,11 @@ namespace RotkAlive.App
         public bool SubLineGold;
         public readonly List<PanelRow> Rows = new List<PanelRow>();
         public string Footer;
+        public string Hint;
         public bool Stale;
         public bool MoveMode;
+        // Filled by OverlayRenderer.Render in move mode.
+        public List<ButtonRect> Buttons = new List<ButtonRect>();
     }
 
     // Draws the panel into a 32 bpp image with per-pixel alpha. Every size is a multiple of the
@@ -43,6 +46,9 @@ namespace RotkAlive.App
         static readonly Color DimText = Color.FromArgb(150, 148, 144);
         static readonly Color StaleText = Color.FromArgb(118, 118, 118);
         static readonly Color MoveBorder = Color.FromArgb(255, 204, 51);
+        static readonly Color ButtonBack = Color.FromArgb(44, 40, 34);
+        static readonly Color ButtonText = Color.FromArgb(236, 226, 206);
+        static readonly Color DoneText = Color.FromArgb(24, 20, 14);
 
         public static readonly Color PlacementColor = Color.FromArgb(160, 160, 160);
         static readonly Dictionary<string, Color> TierColors = new Dictionary<string, Color>
@@ -67,8 +73,8 @@ namespace RotkAlive.App
         sealed class Metrics
         {
             public float U;
-            public int Width, Pad, Frame, TitleH, SubH, RowH, Gap, FooterH, IconH;
-            public Font Title, Status, Sub, Name, NameFallback, Kills, Footer;
+            public int Width, Pad, Frame, TitleH, SubH, RowH, Gap, FooterH, IconH, ToolH, ToolHintH, HintH;
+            public Font Title, Status, Sub, Name, NameFallback, Kills, Footer, Button, Hint;
         }
 
         public static Bitmap Render(PanelModel m, int screenHeight, Settings s)
@@ -77,9 +83,12 @@ namespace RotkAlive.App
             try
             {
                 int height = k.Frame * 2 + k.Pad + k.TitleH + (m.SubLine != null ? k.SubH : 0) + k.Pad / 2;
+                if (m.MoveMode) height += k.ToolH + k.ToolHintH + k.Pad / 2;
                 if (m.Rows.Count > 0) height += m.Rows.Count * (k.RowH + k.Gap);
                 if (m.Footer != null) height += k.FooterH;
+                if (m.Hint != null && !m.MoveMode) height += k.HintH;
                 height += k.Pad;
+                m.Buttons.Clear();
 
                 Bitmap bmp = new Bitmap(k.Width, height, PixelFormat.Format32bppArgb);
                 using (Graphics g = Graphics.FromImage(bmp))
@@ -96,6 +105,16 @@ namespace RotkAlive.App
                     float x = k.Frame + k.Pad;
                     float inner = bmp.Width - 2 * (k.Frame + k.Pad);
                     float y = k.Frame + k.Pad * 0.6f;
+
+                    if (m.MoveMode)
+                    {
+                        m.Buttons.AddRange(EditToolbar.Layout((int)x, (int)y, (int)inner, k.ToolH, k.Gap * 2));
+                        foreach (ButtonRect b in m.Buttons) DrawButton(g, k, b);
+                        y += k.ToolH;
+                        DrawText(g, "DRAG THE PANEL TO MOVE IT", k.Hint, GoldText,
+                            new RectangleF(x, y, inner, k.ToolHintH), StringAlignment.Center);
+                        y += k.ToolHintH + k.Pad / 2;
+                    }
 
                     Color titleColor = m.Stale ? StaleText : TitleColor;
                     DrawText(g, m.Title, k.Title, titleColor, new RectangleF(x, y, inner, k.TitleH), StringAlignment.Near);
@@ -122,14 +141,20 @@ namespace RotkAlive.App
                     }
 
                     if (m.Footer != null)
+                    {
                         DrawText(g, m.Footer, k.Footer, m.Stale ? StaleText : DimText,
                             new RectangleF(x, y, inner, k.FooterH), StringAlignment.Center);
+                        y += k.FooterH;
+                    }
+
+                    if (m.Hint != null && !m.MoveMode)
+                        DrawText(g, m.Hint, k.Hint, GoldText, new RectangleF(x, y, inner, k.HintH), StringAlignment.Center);
                 }
                 return bmp;
             }
             finally
             {
-                foreach (Font f in new Font[] { k.Title, k.Status, k.Sub, k.Name, k.NameFallback, k.Kills, k.Footer })
+                foreach (Font f in new Font[] { k.Title, k.Status, k.Sub, k.Name, k.NameFallback, k.Kills, k.Footer, k.Button, k.Hint })
                     if (f != null) f.Dispose();
             }
         }
@@ -148,6 +173,9 @@ namespace RotkAlive.App
             k.Gap = Math.Max(2, (int)Math.Round(u * 0.22));
             k.FooterH = (int)Math.Round(u * 1.6);
             k.IconH = (int)Math.Round(k.RowH * 0.88);
+            k.ToolH = (int)Math.Round(u * 2.2);
+            k.ToolHintH = (int)Math.Round(u * 1.5);
+            k.HintH = (int)Math.Round(u * 1.4);
 
             FontFamily oswald = Assets.Oswald;
             k.Title = new Font(oswald, u * 1.6f, FontStyle.Bold, GraphicsUnit.Pixel);
@@ -157,7 +185,20 @@ namespace RotkAlive.App
             k.NameFallback = new Font(Assets.FallbackFamily, u * 1.1f, FontStyle.Bold, GraphicsUnit.Pixel);
             k.Kills = new Font(oswald, u * 1.35f, FontStyle.Bold, GraphicsUnit.Pixel);
             k.Footer = new Font(oswald, u * 0.9f, FontStyle.Bold, GraphicsUnit.Pixel);
+            k.Button = new Font(oswald, u * 0.95f, FontStyle.Bold, GraphicsUnit.Pixel);
+            k.Hint = new Font(oswald, u * 0.8f, FontStyle.Bold, GraphicsUnit.Pixel);
             return k;
+        }
+
+        static void DrawButton(Graphics g, Metrics k, ButtonRect b)
+        {
+            bool done = b.Id == ToolbarButton.Done;
+            Rectangle r = b.Bounds;
+            using (Brush back = new SolidBrush(done ? MoveBorder : ButtonBack))
+                g.FillRectangle(back, r);
+            using (Pen edge = new Pen(done ? MoveBorder : GoldRule, Math.Max(1f, k.U * 0.08f)))
+                g.DrawRectangle(edge, r.X + 0.5f, r.Y + 0.5f, r.Width - 1, r.Height - 1);
+            DrawText(g, b.Label, k.Button, done ? DoneText : ButtonText, r, StringAlignment.Center);
         }
 
         static void DrawFrame(Graphics g, Metrics k, int w, int h, int alpha, bool moveMode)

@@ -11,11 +11,13 @@ This file records how the build differs from [BUILD_PLAN.md](BUILD_PLAN.md), the
 - Start: double-click `dist\TottiGol.exe`. A second launch exits immediately.
 - Stop: tray icon, then Exit, or Ctrl+Alt+Q.
 - Show or hide: Ctrl+Alt+O, or double-click the tray icon.
-- Move: Ctrl+Alt+P or the tray menu. Drag the panel, then press Ctrl+Alt+P again. The position is saved to `dist\overlay.ini` as fractions of the current screen.
-- Settings: `dist\overlay.ini`. It is created with defaults on first run and rewritten on each start, so keys from older versions are dropped.
+- Edit mode: Ctrl+Alt+P or the tray menu's `Edit / move`. The panel turns solid, gets a dashed gold border and a toolbar with `SETTINGS`, `HIDE` and `DONE`, and can be dragged anywhere outside the buttons. `DONE` (or Ctrl+Alt+P again) saves the position to `dist\overlay.ini` as fractions of the current screen. `SETTINGS` leaves edit mode and opens the settings window. `HIDE` leaves edit mode and hides the panel. Outside edit mode the panel ignores the mouse completely.
+- Settings window: tray menu `Settings...`, or `SETTINGS` in edit mode. It has the opacity slider (15 to 100 %, applied live), the shortcut-hint checkbox, the list of shortcuts, and `Reset position`. It saves `overlay.ini` when it closes. It is a normal window and takes focus, so it is meant for use between matches.
+- Shortcut hints: on start, a tray balloon names the shortcuts, and the panel shows `CTRL+ALT+P EDIT · CTRL+ALT+O HIDE` for 20 seconds (also after the panel is shown again). Both follow `ShowHints`. If another program holds a shortcut, the hint, the tray menu and the settings window say "tray only" for it.
+- Settings file: `dist\overlay.ini`. It is created with defaults on first run and rewritten on each start, so keys from older versions are dropped.
 - Diagnostics: `dist\overlay.log`.
 - Checks: `dist\checks.exe` runs the fixture checks. `dist\checks.exe replay [LogsDir]` prints the current alive list from the real files.
-- Preview: `dist\TottiGol.exe --preview out.png [screenHeight] [list|stale|empty|waiting|nologs]` draws the panel with sample players and exits.
+- Preview: `dist\TottiGol.exe --preview out.png [screenHeight] [list|stale|empty|waiting|nologs|edit|hint] [opacity]` draws the panel with sample players and exits. `edit` shows the toolbar at full opacity, as on screen.
 
 ## Ranks
 
@@ -64,9 +66,11 @@ This file records how the build differs from [BUILD_PLAN.md](BUILD_PLAN.md), the
 | `MaxRows` | 15 | Rows shown before `+N MORE` |
 | `UppercaseNames` | 1 | Names in capitals like the game UI |
 | `StaleMinutes` | 5 | Grey the panel after this long without new log lines |
-| `PanelOpacity` | 0.88 | Background only; emblems and text are always solid |
+| `Opacity` | 0.70 | Whole panel (background, emblems, text), 0.15 to 1. Set from the settings window. Edit mode ignores it and draws solid |
+| `ShowHints` | 1 | Tray balloon on start and the 20-second shortcut hint on the panel |
+| `PanelOpacity` | 0.88 | Background only, applied on top of `Opacity`. Not in the settings window |
 
-`HighRank`, `MidRank`, `MaxWidthScale` and `Opacity` were removed.
+`HighRank`, `MidRank` and `MaxWidthScale` were removed. `Opacity` is back with a new meaning: it fades the whole panel through `UpdateLayeredWindow`'s constant alpha, so changing it needs no redraw of the panel image.
 
 ## Deviations from the plan
 
@@ -74,6 +78,7 @@ This file records how the build differs from [BUILD_PLAN.md](BUILD_PLAN.md), the
 - **Drawing.** The window is now drawn with per-pixel alpha through `UpdateLayeredWindow`, instead of `Form.Opacity`. It keeps the same styles: topmost, click-through, tool window, layered, no-activate.
 - **Replacement detection.** It compares the first 256 raw bytes directly instead of a hash of them. The effect is the same.
 - **Unknown `MatchEndScreen.log` messages.** Any message that is neither `EVENT_START_MATCH` nor `HandleMatch...` is ignored and logged once per distinct text.
+- **Edit mode and settings.** Move mode became edit mode. Its toolbar buttons answer `WM_NCHITTEST` with `HTCLIENT` and the rest of the panel with `HTCAPTION`, so dragging still works. The window keeps `WS_EX_NOACTIVATE` there, so clicking a toolbar button does not take focus from the game. `SETTINGS` leaves edit mode before opening the window, so the slider's effect is visible (edit mode itself is always drawn solid).
 - **Trailing flags on kill-feed lines.** Live logs on 2026-09-28 end some kill lines with `KILLERFRIEND` or `ASSISTFRIEND`, sometimes after `HEADSHOT`. The parser now accepts any run of all-caps words after the last player. Before that change, those lines were skipped, which left their victims on the list.
 
 ## Acceptance status
@@ -87,3 +92,12 @@ Verified on this PC (2026-09-28, during a live match):
 - [x] Cost during the match: 62 ms of CPU over 30 s (0.2 % of one core), 27.5 MB of private memory. The GDI object count stayed flat at 29.
 - [x] The game switched the desktop to 1920x1440 and back to 2560x1440. Both switches were logged, the panel re-anchored, and it picked up the next match start at 14:00:42.
 - [x] Earlier session: the tracker is only visible when the game is in Windowed Fullscreen (borderless); exclusive fullscreen hides it.
+
+Settings and transparency (2026-09-28, on the desktop):
+
+- [x] `checks.exe`: 97 of 97 pass (adds settings clamp, defaults, round-trip, reset position, and toolbar layout and hit testing).
+- [x] Outside edit mode the style stays `0x080900A8`. Edit mode clears click-through (`0x08090088`), and every exit path restores it.
+- [x] In edit mode the buttons hit-test as client and the rest of the panel as caption (drag). `DONE`, `HIDE` and `SETTINGS` each did their job, and clicking a button did not change the foreground window.
+- [x] The slider moved from 70 to 15, 100 and 50 %. Closing the window saved `Opacity=0.5`, then `0.7` again.
+- [x] After the panel was shown again, it grew by one hint line (94 to 116 px).
+- [ ] Each open and close of the settings window left one GDI object behind (42 to 45 over four cycles). Its bold fonts are now disposed with the window; this still needs a recheck after the next rebuild. The panel alone stays flat.

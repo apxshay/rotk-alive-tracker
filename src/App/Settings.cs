@@ -11,15 +11,23 @@ namespace RotkAlive.App
     // the screen height, so nothing depends on the game's resolution.
     public sealed class Settings
     {
+        public const Corner DefaultAnchor = Corner.TopLeft;
+        public const double DefaultX = 0.006;
+        public const double DefaultY = 0.25;
+        public const double DefaultOpacity = 0.70;
+        public const double MinOpacity = 0.15;
+
         public string LogDir = "";
-        public Corner Anchor = Corner.TopLeft;
-        public double X = 0.006;
-        public double Y = 0.25;
+        public Corner Anchor = DefaultAnchor;
+        public double X = DefaultX;
+        public double Y = DefaultY;
         public double FontScale = 0.011;
         public double PanelWidthScale = 0.20;
         public int MaxRows = 15;
         public bool UppercaseNames = true;
         public double StaleMinutes = 5;
+        public double Opacity = DefaultOpacity;
+        public bool ShowHints = true;
         public double PanelOpacity = 0.88;
 
         string path;
@@ -76,12 +84,22 @@ namespace RotkAlive.App
                 case "maxrows": MaxRows = (int)Num(value, MaxRows); break;
                 case "uppercasenames": UppercaseNames = Num(value, UppercaseNames ? 1 : 0) != 0; break;
                 case "staleminutes": StaleMinutes = Num(value, StaleMinutes); break;
+                case "opacity": Opacity = Num(value, Opacity); break;
+                case "showhints": ShowHints = Num(value, ShowHints ? 1 : 0) != 0; break;
                 case "panelopacity": PanelOpacity = Num(value, PanelOpacity); break;
             }
         }
 
-        void Clamp()
+        public void ResetPosition()
         {
+            Anchor = DefaultAnchor;
+            X = DefaultX;
+            Y = DefaultY;
+        }
+
+        public void Clamp()
+        {
+            Opacity = Math.Max(MinOpacity, Math.Min(1.0, Opacity));
             X = Math.Max(0, Math.Min(1, X));
             Y = Math.Max(0, Math.Min(1, Y));
             FontScale = Math.Max(0.005, Math.Min(0.05, FontScale));
@@ -119,7 +137,11 @@ namespace RotkAlive.App
             sb.AppendLine("# 1 = names in capitals like the game UI, 0 = as written in the kill feed.");
             sb.AppendLine("UppercaseNames=" + (UppercaseNames ? "1" : "0"));
             sb.AppendLine("StaleMinutes=" + F(StaleMinutes));
-            sb.AppendLine("# Background opacity only; emblems and text are always solid.");
+            sb.AppendLine("# Whole panel, 0.15 to 1. Set it from Settings in the tray menu or in edit mode (Ctrl+Alt+P).");
+            sb.AppendLine("Opacity=" + F(Opacity));
+            sb.AppendLine("# 1 = show the shortcut hint on the panel for a few seconds after start.");
+            sb.AppendLine("ShowHints=" + (ShowHints ? "1" : "0"));
+            sb.AppendLine("# Background only, on top of Opacity.");
             sb.AppendLine("PanelOpacity=" + F(PanelOpacity));
             try
             {

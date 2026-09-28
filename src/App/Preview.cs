@@ -5,9 +5,10 @@ using System.Globalization;
 
 namespace RotkAlive.App
 {
-    // TottiGol.exe --preview out.png [screenHeight] [state]
+    // TottiGol.exe --preview out.png [screenHeight] [state] [opacity]
     // Renders the panel with built-in sample players, for comparing against the design without a match.
-    // state: list (default), stale, empty, waiting, nologs
+    // state: list (default), stale, empty, waiting, nologs, edit, hint
+    // opacity: 0.15 to 1, default from Settings; edit mode is always drawn solid, as on screen.
     static class Preview
     {
         public static int Run(string[] args)
@@ -16,8 +17,17 @@ namespace RotkAlive.App
             int screenHeight = 1440;
             if (args.Length > 2) int.TryParse(args[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out screenHeight);
             string state = args.Length > 3 ? args[3] : "list";
+            bool edit = state == "edit";
+            bool hint = state == "hint";
+            if (edit || hint) state = "list";
 
             Settings settings = Settings.Defaults();
+            if (args.Length > 4)
+            {
+                double o;
+                if (double.TryParse(args[4], NumberStyles.Float, CultureInfo.InvariantCulture, out o)) settings.Opacity = o;
+                settings.Clamp();
+            }
             PanelBuilder.State st = new PanelBuilder.State();
             st.HaveLogDir = state != "nologs";
             st.MissingDir = @"C:\Games\ROTK\Logs";
@@ -47,7 +57,9 @@ namespace RotkAlive.App
             s.Alive.Sort(MatchModel.CompareAlive);
 
             st.Snapshot = s;
-            PanelModel model = PanelBuilder.Build(st, settings, false);
+            PanelModel model = PanelBuilder.Build(st, settings, edit);
+            if (hint) model.Hint = "CTRL+ALT+P EDIT  ·  CTRL+ALT+O HIDE";
+            float alpha = edit ? 1f : (float)settings.Opacity;
 
             using (Bitmap panel = OverlayRenderer.Render(model, screenHeight, settings))
             using (Bitmap canvas = new Bitmap(panel.Width + 80, panel.Height + 80, PixelFormat.Format32bppArgb))
@@ -57,7 +69,13 @@ namespace RotkAlive.App
                 using (System.Drawing.Drawing2D.LinearGradientBrush bg = new System.Drawing.Drawing2D.LinearGradientBrush(
                     new Rectangle(0, 0, canvas.Width, canvas.Height), Color.FromArgb(46, 30, 52), Color.FromArgb(22, 18, 26), 60f))
                     g.FillRectangle(bg, 0, 0, canvas.Width, canvas.Height);
-                g.DrawImage(panel, 40, 40);
+                ColorMatrix fade = new ColorMatrix();
+                fade.Matrix33 = alpha;
+                using (ImageAttributes ia = new ImageAttributes())
+                {
+                    ia.SetColorMatrix(fade);
+                    g.DrawImage(panel, new Rectangle(40, 40, panel.Width, panel.Height), 0, 0, panel.Width, panel.Height, GraphicsUnit.Pixel, ia);
+                }
                 canvas.Save(outPath, ImageFormat.Png);
             }
             Console.WriteLine("wrote " + outPath);

@@ -21,7 +21,7 @@ for %%K in (placement bronze silver gold platinum diamond master royalty royalty
   src\Core\*.cs src\App\*.cs
 if errorlevel 1 exit /b 1
 
-"%CSC%" %COMMON% /target:exe /out:dist\checks.exe src\Core\*.cs tests\*.cs
+"%CSC%" %COMMON% /target:exe /out:dist\checks.exe /r:System.Drawing.dll src\Core\*.cs src\App\Settings.cs src\App\EditToolbar.cs tests\*.cs
 if errorlevel 1 exit /b 1
 
 "%CSC%" %COMMON% /target:exe /out:dist\IconExtract.exe /r:System.Drawing.dll tools\IconExtract.cs

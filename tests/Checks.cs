@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Threading;
+using RotkAlive.App;
 
 namespace RotkAlive.Tests
 {
@@ -27,6 +29,8 @@ namespace RotkAlive.Tests
             ModelChecks();
             KillChecks();
             FileChecks();
+            SettingsChecks();
+            ToolbarChecks();
 
             Console.WriteLine();
             Console.WriteLine("passed " + passed + ", failed " + failed);
@@ -333,6 +337,72 @@ namespace RotkAlive.Tests
             {
                 Directory.Delete(dir, true);
             }
+        }
+
+        // ---------- settings ----------
+
+        static void SettingsChecks()
+        {
+            Section("settings");
+            string dir = Path.Combine(Path.GetTempPath(), "rotk-settings-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                string ini = Path.Combine(dir, "overlay.ini");
+
+                File.WriteAllText(ini, "X=0.5\r\nPanelOpacity=0.88\r\n", Utf8);
+                Settings missing = Settings.Load(ini);
+                Check(Math.Abs(missing.Opacity - 0.70) < 1e-9 && missing.ShowHints, "missing Opacity and ShowHints fall back to 0.70 and on");
+
+                File.WriteAllText(ini, "Opacity=0.01\r\n", Utf8);
+                Check(Math.Abs(Settings.Load(ini).Opacity - 0.15) < 1e-9, "Opacity below 0.15 is clamped");
+                File.WriteAllText(ini, "Opacity=3\r\n", Utf8);
+                Check(Math.Abs(Settings.Load(ini).Opacity - 1.0) < 1e-9, "Opacity above 1 is clamped");
+                File.WriteAllText(ini, "Opacity=0,5\r\n", Utf8);
+                Check(Math.Abs(Settings.Load(ini).Opacity - 0.70) < 1e-9, "comma decimal is rejected, default kept");
+
+                Settings s = Settings.Load(ini);
+                s.Opacity = 0.35;
+                s.ShowHints = false;
+                s.Save();
+                Settings back = Settings.Load(ini);
+                Check(Math.Abs(back.Opacity - 0.35) < 1e-9 && !back.ShowHints, "Opacity and ShowHints round-trip through overlay.ini");
+                Check(File.ReadAllText(ini, Utf8).Contains("Opacity=0.35"), "Opacity written with a dot under it-IT");
+
+                back.Anchor = Corner.BottomRight;
+                back.X = 0.9;
+                back.Y = 0.8;
+                back.ResetPosition();
+                Check(back.Anchor == Settings.DefaultAnchor && back.X == Settings.DefaultX && back.Y == Settings.DefaultY, "reset position restores the default corner");
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        static void ToolbarChecks()
+        {
+            Section("edit toolbar");
+            foreach (int width in new int[] { 120, 257, 290, 481 })
+            {
+                List<ButtonRect> b = EditToolbar.Layout(20, 10, width, 30, 6);
+                bool inside = true, apart = true;
+                for (int i = 0; i < b.Count; i++)
+                {
+                    Rectangle r = b[i].Bounds;
+                    if (r.Left < 20 || r.Right > 20 + width || r.Top != 10 || r.Height != 30 || r.Width <= 0) inside = false;
+                    for (int j = i + 1; j < b.Count; j++)
+                        if (r.IntersectsWith(b[j].Bounds)) apart = false;
+                }
+                Check(b.Count == 3 && inside && apart && b[2].Bounds.Right == 20 + width,
+                    "width " + width + ": three buttons inside the panel, not overlapping, flush right");
+            }
+            List<ButtonRect> t = EditToolbar.Layout(0, 0, 300, 30, 6);
+            Check(t[0].Id == ToolbarButton.Settings && t[1].Id == ToolbarButton.Hide && t[2].Id == ToolbarButton.Done, "order is Settings, Hide, Done");
+            Check(EditToolbar.HitTest(t, new Point(t[1].Bounds.Left + 2, 15)).Id == ToolbarButton.Hide, "hit test finds the button under the pointer");
+            Check(EditToolbar.HitTest(t, new Point(t[0].Bounds.Right + 2, 15)) == null, "the gap between buttons is not a button");
+            Check(EditToolbar.HitTest(t, new Point(10, 40)) == null, "below the toolbar is not a button");
         }
 
         // ---------- replay ----------

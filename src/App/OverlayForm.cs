@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -21,6 +22,7 @@ namespace RotkAlive.App
         const int WM_HOTKEY = 0x312;
         const int WM_EXITSIZEMOVE = 0x232;
         const int MA_NOACTIVATE = 3;
+        const int HTCLIENT = 1;
         const int HTCAPTION = 2;
         const uint SWP_NOSIZE = 0x1;
         const uint SWP_NOMOVE = 0x2;
@@ -40,6 +42,7 @@ namespace RotkAlive.App
         const int TopmostEveryTicks = 4;
         const int AgeRepaintEveryTicks = 10;
         const int LocateEveryTicks = 60;
+        static readonly TimeSpan HintDuration = TimeSpan.FromSeconds(20);
 
         static readonly Color TrayBack = Color.FromArgb(16, 17, 20);
         static readonly Color TrayGold = Color.FromArgb(255, 204, 51);
@@ -49,6 +52,7 @@ namespace RotkAlive.App
         readonly NotifyIcon tray = new NotifyIcon();
         readonly ToolStripMenuItem showItem;
         readonly ToolStripMenuItem moveItem;
+        readonly ToolStripMenuItem exitItem;
 
         LogSession session;
         string missingDir;
@@ -56,6 +60,12 @@ namespace RotkAlive.App
         bool moveMode;
         bool userHidden;
         bool firstRender = true;
+        bool hotkeyToggleOk, hotkeyMoveOk, hotkeyQuitOk;
+        DateTime hintUntilUtc = DateTime.MinValue;
+        bool hintShown;
+        List<ButtonRect> buttons = new List<ButtonRect>();
+        ButtonRect pressed;
+        SettingsForm settingsForm;
 
         public OverlayForm(Settings settings)
         {
@@ -69,14 +79,17 @@ namespace RotkAlive.App
             Size = new Size(1, 1);
 
             ContextMenuStrip menu = new ContextMenuStrip();
-            showItem = new ToolStripMenuItem("Hide overlay  (Ctrl+Alt+O)", null, delegate { ToggleVisible(); });
-            moveItem = new ToolStripMenuItem("Move mode  (Ctrl+Alt+P)", null, delegate { ToggleMoveMode(); });
-            menu.Items.Add(showItem);
+            showItem = new ToolStripMenuItem("", null, delegate { ToggleVisible(); });
+            moveItem = new ToolStripMenuItem("", null, delegate { ToggleMoveMode(); });
+            exitItem = new ToolStripMenuItem("", null, delegate { Close(); });
+            menu.Items.Add(new ToolStripMenuItem("Settings...", null, delegate { OpenSettings(); }));
             menu.Items.Add(moveItem);
+            menu.Items.Add(showItem);
             menu.Items.Add(new ToolStripMenuItem("Open overlay.log", null, delegate { OpenDiagLog(); }));
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add(new ToolStripMenuItem("Exit  (Ctrl+Alt+Q)", null, delegate { Close(); }));
+            menu.Items.Add(exitItem);
             tray.ContextMenuStrip = menu;
+            UpdateMenuText();
             tray.Icon = MakeTrayIcon();
             tray.Text = "ROTK alive overlay";
             tray.Visible = true;
@@ -103,14 +116,16 @@ namespace RotkAlive.App
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            Register(HotkeyToggle, 0x4F, "Ctrl+Alt+O");
-            Register(HotkeyMove, 0x50, "Ctrl+Alt+P");
-            Register(HotkeyQuit, 0x51, "Ctrl+Alt+Q");
+            hotkeyToggleOk = Register(HotkeyToggle, 0x4F, "Ctrl+Alt+O");
+            hotkeyMoveOk = Register(HotkeyMove, 0x50, "Ctrl+Alt+P");
+            hotkeyQuitOk = Register(HotkeyQuit, 0x51, "Ctrl+Alt+Q");
+            UpdateMenuText();
         }
 
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
+            StartHint();
             OnTick(this, EventArgs.Empty);
             timer.Start();
         }
@@ -119,12 +134,18 @@ namespace RotkAlive.App
         {
             base.OnShown(e);
             Render();
+            if (settings.ShowHints)
+                tray.ShowBalloonTip(6000, "ROTK alive tracker is running",
+                    Key(hotkeyMoveOk, "Ctrl+Alt+P") + " to move it or open settings, " +
+                    Key(hotkeyToggleOk, "Ctrl+Alt+O") + " to hide it. Right-click this icon for the menu.",
+                    ToolTipIcon.Info);
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             timer.Stop();
             SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+            if (settingsForm != null && !settingsForm.IsDisposed) settingsForm.Close();
             UnregisterHotKey(Handle, HotkeyToggle);
             UnregisterHotKey(Handle, HotkeyMove);
             UnregisterHotKey(Handle, HotkeyQuit);
@@ -147,7 +168,9 @@ namespace RotkAlive.App
                 case WM_NCHITTEST:
                     if (moveMode)
                     {
-                        m.Result = (IntPtr)HTCAPTION;
+                        long lp = m.LParam.ToInt64();
+                        Point client = PointToClient(new Point((short)(lp & 0xFFFF), (short)((lp >> 16) & 0xFFFF)));
+                        m.Result = (IntPtr)(EditToolbar.HitTest(buttons, client) != null ? HTCLIENT : HTCAPTION);
                         return;
                     }
                     break;
@@ -164,6 +187,48 @@ namespace RotkAlive.App
             base.WndProc(ref m);
         }
 
+        // Only reached in move mode, when the pointer is over a toolbar button (HTCLIENT).
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            pressed = e.Button == MouseButtons.Left ? EditToolbar.HitTest(buttons, e.Location) : null;
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            Cursor = EditToolbar.HitTest(buttons, e.Location) != null ? Cursors.Hand : Cursors.Default;
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            ButtonRect hit = e.Button == MouseButtons.Left ? EditToolbar.HitTest(buttons, e.Location) : null;
+            ButtonRect down = pressed;
+            pressed = null;
+            if (!moveMode || hit == null || down == null || hit.Id != down.Id) return;
+            BeginInvoke((MethodInvoker)delegate { OnToolbar(hit.Id); });
+        }
+
+        void OnToolbar(ToolbarButton id)
+        {
+            if (!moveMode) return;
+            switch (id)
+            {
+                case ToolbarButton.Settings:
+                    ToggleMoveMode();
+                    OpenSettings();
+                    break;
+                case ToolbarButton.Hide:
+                    ToggleMoveMode();
+                    if (!userHidden) ToggleVisible();
+                    break;
+                case ToolbarButton.Done:
+                    ToggleMoveMode();
+                    break;
+            }
+        }
+
         // ---------- polling ----------
 
         void OnTick(object sender, EventArgs e)
@@ -174,7 +239,8 @@ namespace RotkAlive.App
                 if (session == null && (tick == 1 || tick % LocateEveryTicks == 0)) Locate();
 
                 bool changed = session != null && session.Poll();
-                if (changed || firstRender || tick % AgeRepaintEveryTicks == 0) Render();
+                bool hintExpired = hintShown && !HintActive();
+                if (changed || firstRender || hintExpired || tick % AgeRepaintEveryTicks == 0) Render();
                 if (tick % TopmostEveryTicks == 0) AssertTopmost();
             }
             catch (Exception ex)
@@ -235,9 +301,12 @@ namespace RotkAlive.App
                 st.Age = nowUtc - session.LastWriteUtc;
             }
             PanelModel model = PanelBuilder.Build(st, settings, moveMode);
+            hintShown = !moveMode && HintActive();
+            if (hintShown) model.Hint = HintText();
 
             using (Bitmap bmp = OverlayRenderer.Render(model, screen.Height, settings))
             {
+                buttons = model.Buttons;
                 Point p = AnchoredLocation(screen, bmp.Width, bmp.Height);
                 Rectangle bounds = new Rectangle(p, bmp.Size);
                 // Keep WinForms' idea of the bounds in step, otherwise Show() would shrink the window back.
@@ -262,7 +331,8 @@ namespace RotkAlive.App
                 POINT top = new POINT(location.X, location.Y);
                 BLENDFUNCTION blend = new BLENDFUNCTION();
                 blend.BlendOp = AC_SRC_OVER;
-                blend.SourceConstantAlpha = 255;
+                // Move mode is always drawn solid so the toolbar stays readable at low opacity.
+                blend.SourceConstantAlpha = moveMode ? (byte)255 : (byte)Math.Round(255 * settings.Opacity);
                 blend.AlphaFormat = AC_SRC_ALPHA;
                 if (!UpdateLayeredWindow(Handle, screenDc, ref top, ref size, memDc, ref source, 0, ref blend, ULW_ALPHA))
                     DiagLog.Once("ulw:" + Marshal.GetLastWin32Error(), "UpdateLayeredWindow failed: " + Marshal.GetLastWin32Error());
@@ -323,11 +393,12 @@ namespace RotkAlive.App
             if (userHidden) Hide();
             else
             {
+                StartHint();
                 Show();
                 Render();
                 AssertTopmost();
             }
-            showItem.Text = userHidden ? "Show overlay  (Ctrl+Alt+O)" : "Hide overlay  (Ctrl+Alt+O)";
+            UpdateMenuText();
         }
 
         void ToggleMoveMode()
@@ -337,9 +408,83 @@ namespace RotkAlive.App
             ex = moveMode ? (ex & ~WS_EX_TRANSPARENT) : (ex | WS_EX_TRANSPARENT);
             SetWindowLong(Handle, GWL_EXSTYLE, ex);
             moveItem.Checked = moveMode;
-            if (!moveMode) SavePosition();
+            pressed = null;
+            if (!moveMode)
+            {
+                Cursor = Cursors.Default;
+                SavePosition();
+            }
             if (userHidden && moveMode) ToggleVisible();
             Render();
+        }
+
+        void OpenSettings()
+        {
+            if (settingsForm != null && !settingsForm.IsDisposed)
+            {
+                if (settingsForm.WindowState == FormWindowState.Minimized) settingsForm.WindowState = FormWindowState.Normal;
+                settingsForm.Activate();
+                return;
+            }
+            if (userHidden) ToggleVisible();
+            settingsForm = new SettingsForm(settings, ShortcutLines(), OnSettingsChanged, OnResetPosition);
+            settingsForm.FormClosed += delegate
+            {
+                settings.Save();
+                settingsForm = null;
+            };
+            settingsForm.Show();
+        }
+
+        void OnSettingsChanged(bool hintsTurnedOn)
+        {
+            if (hintsTurnedOn) StartHint();
+            Render();
+        }
+
+        void OnResetPosition()
+        {
+            settings.ResetPosition();
+            Render();
+            AssertTopmost();
+        }
+
+        void StartHint()
+        {
+            hintUntilUtc = settings.ShowHints ? DateTime.UtcNow + HintDuration : DateTime.MinValue;
+        }
+
+        bool HintActive()
+        {
+            return settings.ShowHints && DateTime.UtcNow < hintUntilUtc;
+        }
+
+        string HintText()
+        {
+            return (hotkeyMoveOk ? "CTRL+ALT+P EDIT" : "EDIT: TRAY ONLY") + "  ·  " +
+                   (hotkeyToggleOk ? "CTRL+ALT+O HIDE" : "HIDE: TRAY ONLY");
+        }
+
+        string[] ShortcutLines()
+        {
+            return new string[]
+            {
+                Key(hotkeyMoveOk, "Ctrl+Alt+P") + "    edit mode: move the panel, open settings, hide",
+                Key(hotkeyToggleOk, "Ctrl+Alt+O") + "    hide or show the panel",
+                Key(hotkeyQuitOk, "Ctrl+Alt+Q") + "    quit the tracker",
+            };
+        }
+
+        static string Key(bool ok, string key)
+        {
+            return ok ? key : key + " (taken, use the tray icon)";
+        }
+
+        void UpdateMenuText()
+        {
+            showItem.Text = (userHidden ? "Show" : "Hide") + "  (" + (hotkeyToggleOk ? "Ctrl+Alt+O" : "tray only") + ")";
+            moveItem.Text = "Edit / move  (" + (hotkeyMoveOk ? "Ctrl+Alt+P" : "tray only") + ")";
+            exitItem.Text = "Exit  (" + (hotkeyQuitOk ? "Ctrl+Alt+Q" : "tray only") + ")";
         }
 
         void OpenDiagLog()
@@ -361,10 +506,11 @@ namespace RotkAlive.App
             tray.Text = text.Length > 63 ? text.Substring(0, 63) : text;
         }
 
-        void Register(int id, uint vk, string label)
+        bool Register(int id, uint vk, string label)
         {
-            if (!RegisterHotKey(Handle, id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, vk))
-                DiagLog.Write("hotkey " + label + " is taken by another program; use the tray icon instead");
+            if (RegisterHotKey(Handle, id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, vk)) return true;
+            DiagLog.Write("hotkey " + label + " is taken by another program; use the tray icon instead");
+            return false;
         }
 
         static Icon MakeTrayIcon()
