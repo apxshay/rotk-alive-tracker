@@ -16,12 +16,11 @@ namespace RotkAlive.App
         public double X = 0.006;
         public double Y = 0.25;
         public double FontScale = 0.011;
-        public double MaxWidthScale = 0.16;
+        public double PanelWidthScale = 0.20;
         public int MaxRows = 15;
-        public double HighRank = 7.0;
-        public double MidRank = 6.0;
+        public bool UppercaseNames = true;
         public double StaleMinutes = 5;
-        public double Opacity = 0.8;
+        public double PanelOpacity = 0.88;
 
         string path;
 
@@ -51,7 +50,14 @@ namespace RotkAlive.App
                 DiagLog.Write("could not read " + path + ", using defaults: " + ex.Message);
             }
             s.Clamp();
+            // Rewrite so keys from older versions are dropped and new ones appear with defaults.
+            s.Save();
             return s;
+        }
+
+        public static Settings Defaults()
+        {
+            return new Settings();
         }
 
         void Apply(string key, string value)
@@ -66,12 +72,11 @@ namespace RotkAlive.App
                 case "x": X = Num(value, X); break;
                 case "y": Y = Num(value, Y); break;
                 case "fontscale": FontScale = Num(value, FontScale); break;
-                case "maxwidthscale": MaxWidthScale = Num(value, MaxWidthScale); break;
+                case "panelwidthscale": PanelWidthScale = Num(value, PanelWidthScale); break;
                 case "maxrows": MaxRows = (int)Num(value, MaxRows); break;
-                case "highrank": HighRank = Num(value, HighRank); break;
-                case "midrank": MidRank = Num(value, MidRank); break;
+                case "uppercasenames": UppercaseNames = Num(value, UppercaseNames ? 1 : 0) != 0; break;
                 case "staleminutes": StaleMinutes = Num(value, StaleMinutes); break;
-                case "opacity": Opacity = Num(value, Opacity); break;
+                case "panelopacity": PanelOpacity = Num(value, PanelOpacity); break;
             }
         }
 
@@ -80,11 +85,10 @@ namespace RotkAlive.App
             X = Math.Max(0, Math.Min(1, X));
             Y = Math.Max(0, Math.Min(1, Y));
             FontScale = Math.Max(0.005, Math.Min(0.05, FontScale));
-            MaxWidthScale = Math.Max(0.05, Math.Min(0.6, MaxWidthScale));
+            PanelWidthScale = Math.Max(0.08, Math.Min(0.8, PanelWidthScale));
             MaxRows = Math.Max(1, Math.Min(60, MaxRows));
             StaleMinutes = Math.Max(0.5, StaleMinutes);
-            // Click-through needs a layered window; WinForms only makes it layered below 1.0.
-            Opacity = Math.Max(0.3, Math.Min(0.99, Opacity));
+            PanelOpacity = Math.Max(0.1, Math.Min(1.0, PanelOpacity));
         }
 
         static double Num(string s, double fallback)
@@ -110,12 +114,13 @@ namespace RotkAlive.App
             sb.AppendLine("Y=" + F(Y));
             sb.AppendLine("# Sizes are fractions of the screen height.");
             sb.AppendLine("FontScale=" + F(FontScale));
-            sb.AppendLine("MaxWidthScale=" + F(MaxWidthScale));
+            sb.AppendLine("PanelWidthScale=" + F(PanelWidthScale));
             sb.AppendLine("MaxRows=" + MaxRows.ToString(CultureInfo.InvariantCulture));
-            sb.AppendLine("HighRank=" + F(HighRank));
-            sb.AppendLine("MidRank=" + F(MidRank));
+            sb.AppendLine("# 1 = names in capitals like the game UI, 0 = as written in the kill feed.");
+            sb.AppendLine("UppercaseNames=" + (UppercaseNames ? "1" : "0"));
             sb.AppendLine("StaleMinutes=" + F(StaleMinutes));
-            sb.AppendLine("Opacity=" + F(Opacity));
+            sb.AppendLine("# Background opacity only; emblems and text are always solid.");
+            sb.AppendLine("PanelOpacity=" + F(PanelOpacity));
             try
             {
                 File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));

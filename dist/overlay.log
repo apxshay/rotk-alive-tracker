@@ -1,6 +1,141 @@
-2026-09-27 21:28:59  overlay started
-2026-09-27 21:28:59  reading logs in C:\Games\ROTK\Logs
-2026-09-27 21:28:59  current client run id 1790534889
-2026-09-27 21:28:59  match start 2026-09-27 21:14:40 seq 20104: alive list reset
-2026-09-27 21:38:33  display changed: {X=0,Y=0,Width=1920,Height=1440}
-2026-09-27 21:38:38  display changed: {X=0,Y=0,Width=2560,Height=1440}
+2026-09-28 13:59:05  overlay started
+2026-09-28 13:59:05  reading logs in C:\Games\ROTK\Logs
+2026-09-28 13:59:05  unknown MatchEndScreen.log message ignored: EVENT_GROUP_MEMBER_DEATH
+2026-09-28 13:59:05  unknown MatchEndScreen.log message ignored: EVENT_GROUP_TEAM_DEFEAT
+2026-09-28 13:59:05  current client run id 1790595332
+2026-09-28 13:59:05  match start 2026-09-28 13:50:15 seq 11225: alive list reset
+2026-09-28 13:59:05  posthumous: Distant (14837759802391687398) credited at 13:50:57 seq 12246 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: Survivor46170222 (3808504540731019525) credited at 13:51:09 seq 12313 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: Mikibb (2148904716973570708) credited at 13:51:36 seq 12598 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: Reyde (1376845205745835526) credited at 13:51:51 seq 13001 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: Baabze (2962758341964555153) credited at 13:52:04 seq 13032 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: nsuki (3176035588646598455) credited at 13:52:20 seq 13079 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: CryZeroeXpired (2311736169523076379) credited at 13:52:21 seq 13081 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: KD4 (5177233686156932510) credited at 13:52:32 seq 13119 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: TSN_MonSter (6610374060769859209) credited at 13:53:06 seq 13356 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: Survivor34883142 (12300654133988425417) credited at 13:53:06 seq 13361 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: Tchik1 (8456143073281585763) credited at 13:53:09 seq 13379 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: DaoyanFpsggman (5416823532555156460) credited at 13:53:28 seq 13462 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: Survivor73887649 (11956574661027328101) credited at 13:54:04 seq 13658 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: yeepeey (12467932351917465919) credited at 13:56:28 seq 14375 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: NoOVy (8718204573362245863) credited at 13:58:02 seq 14866 after dying in this match; stays dead
+2026-09-28 13:59:05  posthumous: Pato (9467308332550827394) credited at 13:58:20 seq 15127 after dying in this match; stays dead
+2026-09-28 13:59:40  display changed: {X=0,Y=0,Width=1920,Height=1440}
+2026-09-28 14:00:43  match start 2026-09-28 14:00:42 seq 16438: alive list reset
+2026-09-28 14:01:07  posthumous: Rv7a1rFlare (5578266103066299901) credited at 14:01:07 seq 16797 after dying in this match; stays dead
+2026-09-28 14:01:12  posthumous: ScreaMy 2tap (6857618161755346977) credited at 14:01:11 seq 16815 after dying in this match; stays dead
+2026-09-28 14:01:12  posthumous: Pato (9467308332550827394) credited at 14:01:11 seq 16816 after dying in this match; stays dead
+2026-09-28 14:01:26  posthumous: Gst (7644868544786216741) credited at 14:01:25 seq 16907 after dying in this match; stays dead
+2026-09-28 14:01:52  display changed: {X=0,Y=0,Width=2560,Height=1440}
+2026-09-28 14:01:58  posthumous: 7HaoPlayer (17182662163909140744) credited at 14:01:56 seq 17010 after dying in this match; stays dead
+2026-09-28 14:02:00  posthumous: Jesse Pinkman (1933013374499315220) credited at 14:01:59 seq 17012 after dying in this match; stays dead
+2026-09-28 14:02:05  overlay stopped
+2026-09-28 16:52:47  overlay started
+2026-09-28 16:52:47  reading logs in C:\Games\ROTK\Logs
+2026-09-28 16:52:47  unknown MatchEndScreen.log message ignored: EVENT_GROUP_MEMBER_DEATH
+2026-09-28 16:52:47  unknown MatchEndScreen.log message ignored: EVENT_GROUP_TEAM_DEFEAT
+2026-09-28 16:52:47  current client run id 1790595332
+2026-09-28 16:52:47  match start 2026-09-28 15:44:23 seq 68250: alive list reset
+2026-09-28 16:52:47  posthumous: Dzejkobsonss (17274911127896759085) credited at 15:45:17 seq 68890 after dying in this match; stays dead
+2026-09-28 16:52:47  posthumous: Dzejkobsonss (17274911127896759085) credited at 15:45:18 seq 68894 after dying in this match; stays dead
+2026-09-28 16:52:47  posthumous: Survivor91618662 (11368311978466517962) credited at 15:45:23 seq 68951 after dying in this match; stays dead
+2026-09-28 16:52:47  posthumous: Pata_God (307531777201051149) credited at 15:45:25 seq 68976 after dying in this match; stays dead
+2026-09-28 16:52:47  posthumous: YyuanJ1ang (13755208085546899617) credited at 15:45:47 seq 69076 after dying in this match; stays dead
+2026-09-28 16:52:47  posthumous: Depressionkid (8084814168679525964) credited at 15:45:53 seq 69100 after dying in this match; stays dead
+2026-09-28 16:52:47  posthumous: Z3 Nailli (6057708083848623021) credited at 15:46:23 seq 69458 after dying in this match; stays dead
+2026-09-28 16:52:47  posthumous: jujubang (11385818190487063400) credited at 15:47:03 seq 69769 after dying in this match; stays dead
+2026-09-28 16:52:47  posthumous: MARKSMAD (9101380426412845649) credited at 15:47:52 seq 70034 after dying in this match; stays dead
+2026-09-28 16:52:47  posthumous: Rv7oNslaught5 (6982462445002318337) credited at 15:48:07 seq 70179 after dying in this match; stays dead
+2026-09-28 16:52:47  posthumous: VaMimir (14242741073413118456) credited at 15:49:02 seq 70423 after dying in this match; stays dead
+2026-09-28 16:52:47  posthumous: Strok (9979773380360043178) credited at 15:49:05 seq 70438 after dying in this match; stays dead
+2026-09-28 16:55:39  overlay stopped
+2026-09-28 16:57:22  overlay started
+2026-09-28 16:57:22  reading logs in C:\Games\ROTK\Logs
+2026-09-28 16:58:29  current client run id 1790607344
+2026-09-28 16:58:29  match start 2026-09-28 16:58:27 seq 10838: alive list reset
+2026-09-28 16:59:00  posthumous: EBK_MANAS (9331770008203040000) credited at 16:59:00 seq 11749 after dying in this match; stays dead
+2026-09-28 16:59:02  posthumous: IIIlllIIlllIIIIllll (13260531644152756301) credited at 16:59:02 seq 11772 after dying in this match; stays dead
+2026-09-28 16:59:10  posthumous: MVFJS (17878248454802464640) credited at 16:59:09 seq 11809 after dying in this match; stays dead
+2026-09-28 16:59:11  posthumous: mister ego (5292866232329040513) credited at 16:59:09 seq 11812 after dying in this match; stays dead
+2026-09-28 16:59:32  posthumous: DraYZz (621465472945665819) credited at 16:59:31 seq 11914 after dying in this match; stays dead
+2026-09-28 16:59:34  posthumous: Riley Gale (9750248276343661064) credited at 16:59:33 seq 11924 after dying in this match; stays dead
+2026-09-28 16:59:51  posthumous: Survivor18425528 (3604748857978172890) credited at 16:59:51 seq 12039 after dying in this match; stays dead
+2026-09-28 16:59:56  posthumous: Jannecas (14662839627300346072) credited at 16:59:55 seq 12053 after dying in this match; stays dead
+2026-09-28 17:00:06  posthumous: Zori (9863764479173557844) credited at 17:00:05 seq 12098 after dying in this match; stays dead
+2026-09-28 17:00:17  posthumous: SPOTIFYCOCK2000 (17643310978715115160) credited at 17:00:16 seq 12141 after dying in this match; stays dead
+2026-09-28 17:00:18  posthumous: Chispaaka (7790562497912997458) credited at 17:00:18 seq 12146 after dying in this match; stays dead
+2026-09-28 17:01:00  posthumous: Noda (27448598793144423) credited at 17:01:00 seq 12336 after dying in this match; stays dead
+2026-09-28 17:01:16  posthumous: Boeing747 (8603922016548541264) credited at 17:01:15 seq 12440 after dying in this match; stays dead
+2026-09-28 17:01:28  posthumous: BOSSLADY (6355426448918564614) credited at 17:01:28 seq 12602 after dying in this match; stays dead
+2026-09-28 17:02:08  posthumous: StripZawierucha (1373374783746857682) credited at 17:02:07 seq 12891 after dying in this match; stays dead
+2026-09-28 17:04:51  posthumous: EvorageQQlove1 (314309121600701931) credited at 17:04:50 seq 13939 after dying in this match; stays dead
+2026-09-28 17:07:18  display changed: {X=0,Y=0,Width=1440,Height=1080}
+2026-09-28 17:07:45  overlay stopped
+2026-09-28 17:08:28  overlay started
+2026-09-28 17:08:29  reading logs in C:\Games\ROTK\Logs
+2026-09-28 17:09:00  overlay stopped
+2026-09-28 17:09:37  overlay started
+2026-09-28 17:09:37  reading logs in C:\Games\ROTK\Logs
+2026-09-28 17:10:36  current client run id 1790608142
+2026-09-28 17:10:36  match start 2026-09-28 17:10:34 seq 10755: alive list reset
+2026-09-28 17:10:57  posthumous: Slaaster (8499840226827886091) credited at 17:10:56 seq 11176 after dying in this match; stays dead
+2026-09-28 17:11:05  posthumous: slur (15739127100405407064) credited at 17:11:04 seq 11247 after dying in this match; stays dead
+2026-09-28 17:11:10  posthumous: rougeri (7993050339316642522) credited at 17:11:09 seq 11274 after dying in this match; stays dead
+2026-09-28 17:11:17  posthumous: Plarthy (15814792456536562776) credited at 17:11:16 seq 11294 after dying in this match; stays dead
+2026-09-28 17:11:27  posthumous: drtk (7040299478419829960) credited at 17:11:26 seq 11321 after dying in this match; stays dead
+2026-09-28 17:13:25  match start 2026-09-28 17:13:24 seq 12418: alive list reset
+2026-09-28 17:13:53  posthumous: sati (18015800704737630587) credited at 17:13:52 seq 12574 after dying in this match; stays dead
+2026-09-28 17:14:06  posthumous: uwantsum (11636705301576594913) credited at 17:14:05 seq 12621 after dying in this match; stays dead
+2026-09-28 17:14:10  posthumous: Eryciwky (8637451674445644135) credited at 17:14:10 seq 12641 after dying in this match; stays dead
+2026-09-28 17:14:27  posthumous: Essentiel (13136769281544903984) credited at 17:14:25 seq 12690 after dying in this match; stays dead
+2026-09-28 17:17:21  match start 2026-09-28 17:17:21 seq 13793: alive list reset
+2026-09-28 17:19:27  match start 2026-09-28 17:19:27 seq 16138: alive list reset
+2026-09-28 17:19:59  posthumous: ADZ (16971900307114615219) credited at 17:19:57 seq 16386 after dying in this match; stays dead
+2026-09-28 17:19:59  posthumous: MUBETTE (16763836978253532289) credited at 17:19:58 seq 16388 after dying in this match; stays dead
+2026-09-28 17:20:06  posthumous: ImFaMeZzZOG (770267315087516281) credited at 17:20:06 seq 16429 after dying in this match; stays dead
+2026-09-28 17:20:21  posthumous: macsnac (15349109751950435042) credited at 17:20:20 seq 16463 after dying in this match; stays dead
+2026-09-28 17:21:51  match start 2026-09-28 17:21:50 seq 17498: alive list reset
+2026-09-28 17:22:24  posthumous: ElDjixoDeLaNoche (8647187509318530709) credited at 17:22:23 seq 18539 after dying in this match; stays dead
+2026-09-28 17:22:25  posthumous: spacejam (751347617239297315) credited at 17:22:24 seq 18544 after dying in this match; stays dead
+2026-09-28 17:22:30  posthumous: KILLDREAMST (12603561861787600913) credited at 17:22:29 seq 18613 after dying in this match; stays dead
+2026-09-28 17:22:37  posthumous: Genki (15261073318191868851) credited at 17:22:36 seq 18679 after dying in this match; stays dead
+2026-09-28 17:22:45  posthumous: JulieWTF (14312524753320747343) credited at 17:22:45 seq 18802 after dying in this match; stays dead
+2026-09-28 17:22:47  posthumous: BH1 (11423960956978353674) credited at 17:22:46 seq 18825 after dying in this match; stays dead
+2026-09-28 17:23:48  overlay stopped
+2026-09-28 17:25:46  overlay started
+2026-09-28 17:25:46  reading logs in C:\Games\ROTK\Logs
+2026-09-28 17:25:50  current client run id 1790609018
+2026-09-28 17:25:50  match start 2026-09-28 17:25:49 seq 10725: alive list reset
+2026-09-28 17:26:17  posthumous: Hydra_Hawkk (275762650152831872) credited at 17:26:16 seq 11062 after dying in this match; stays dead
+2026-09-28 17:26:18  posthumous: pg-ghost (18269080392818522213) credited at 17:26:17 seq 11064 after dying in this match; stays dead
+2026-09-28 17:26:21  posthumous: CraZe (4074289368451507551) credited at 17:26:21 seq 11096 after dying in this match; stays dead
+2026-09-28 17:26:22  posthumous: Szeber (6550156281424137378) credited at 17:26:21 seq 11098 after dying in this match; stays dead
+2026-09-28 17:26:24  posthumous: lolo17 (2733527069368874654) credited at 17:26:23 seq 11102 after dying in this match; stays dead
+2026-09-28 17:26:27  posthumous: zetaa (7450165277916031824) credited at 17:26:26 seq 11117 after dying in this match; stays dead
+2026-09-28 17:26:45  posthumous: Rainy (15024083524599204404) credited at 17:26:45 seq 11191 after dying in this match; stays dead
+2026-09-28 17:27:16  posthumous: Ugo (1141384756649730438) credited at 17:27:16 seq 11280 after dying in this match; stays dead
+2026-09-28 17:27:54  posthumous: Rubian1337 (4509708122929670120) credited at 17:27:54 seq 11412 after dying in this match; stays dead
+2026-09-28 17:27:56  posthumous: Survivor61534852 (6092192404853639428) credited at 17:27:56 seq 11426 after dying in this match; stays dead
+2026-09-28 17:27:58  posthumous: z1gge (18066927206559368726) credited at 17:27:57 seq 11436 after dying in this match; stays dead
+2026-09-28 17:28:30  posthumous: zbHan6 (15796416903919916700) credited at 17:28:29 seq 11496 after dying in this match; stays dead
+2026-09-28 17:30:04  display changed: {X=0,Y=0,Width=1920,Height=1440}
+2026-09-28 17:31:22  match start 2026-09-28 17:31:22 seq 12797: alive list reset
+2026-09-28 17:32:01  posthumous: Aleks21 (5577341140924155923) credited at 17:32:00 seq 13917 after dying in this match; stays dead
+2026-09-28 17:32:10  posthumous: Filipek (4634585686673947741) credited at 17:32:10 seq 13961 after dying in this match; stays dead
+2026-09-28 17:32:23  posthumous: BARA NO STOP (422556523889196780) credited at 17:32:22 seq 14062 after dying in this match; stays dead
+2026-09-28 17:32:24  posthumous: camx (9846966924942116509) credited at 17:32:24 seq 14071 after dying in this match; stays dead
+2026-09-28 17:32:33  posthumous: hervoltz (14721552649927123882) credited at 17:32:33 seq 14132 after dying in this match; stays dead
+2026-09-28 17:33:33  posthumous: Ag0nyPain (2217017184180799410) credited at 17:33:33 seq 14581 after dying in this match; stays dead
+2026-09-28 17:34:13  posthumous: TIGER1 (5591466253951277038) credited at 17:34:12 seq 14823 after dying in this match; stays dead
+2026-09-28 17:40:15  match start 2026-09-28 17:40:15 seq 17822: alive list reset
+2026-09-28 17:40:46  posthumous: Zorro (7760116671540220610) credited at 17:40:45 seq 18437 after dying in this match; stays dead
+2026-09-28 17:40:51  posthumous: Rasssio (11617676481880100579) credited at 17:40:51 seq 18460 after dying in this match; stays dead
+2026-09-28 17:41:05  posthumous: MjM (7062719509680288815) credited at 17:41:05 seq 18530 after dying in this match; stays dead
+2026-09-28 17:41:09  posthumous: CHARLIEKIRK (10853354902691734881) credited at 17:41:08 seq 18560 after dying in this match; stays dead
+2026-09-28 17:41:19  posthumous: RaphaNR (5955541919129193912) credited at 17:41:19 seq 18593 after dying in this match; stays dead
+2026-09-28 17:41:26  posthumous: Ex1k (17115263473987795518) credited at 17:41:25 seq 18618 after dying in this match; stays dead
+2026-09-28 17:41:30  posthumous: vomit (6444030341909451179) credited at 17:41:30 seq 18644 after dying in this match; stays dead
+2026-09-28 17:41:37  posthumous: ceorible554411 (13355232034184746217) credited at 17:41:37 seq 18705 after dying in this match; stays dead
+2026-09-28 17:41:54  posthumous: realForbis (2855115576826634297) credited at 17:41:54 seq 18785 after dying in this match; stays dead
+2026-09-28 17:42:12  posthumous: Young Dolph (17500831702621925001) credited at 17:42:12 seq 19207 after dying in this match; stays dead
+2026-09-28 17:42:16  posthumous: NXM (15885518387499386802) credited at 17:42:16 seq 19256 after dying in this match; stays dead

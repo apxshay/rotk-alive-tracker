@@ -32,6 +32,9 @@ namespace RotkAlive.Tests
         public const string M2KayzahPosthumousKill = "2026-09-27\t20:56:56\tDESKTOP-0SJTF3G\t1790534889\t14222\t4\t455940061\tkayzahMACHINE (8302646291024083693) [rank:5.5] [ping:3] KILLED tYt_DSN2tap (7652327888861413276) [rank:4.4] [ping:3]";
         public const string M2TottinhoDies = "2026-09-27\t20:57:33\tDESKTOP-0SJTF3G\t1790534889\t14492\t4\t455977112\tLapurge76 (7409795704159837713) [rank:3.3] [ping:3] KILLED Tottinho (3650647432991908622) [rank:5.1] [ping:3] HEADSHOT";
 
+        public const string M2DoggeinfKill1 = "2026-09-27\t20:55:17\tDESKTOP-0SJTF3G\t1790534889\t13396\t4\t455841365\tdoggeinf (10484055460605013394) [rank:4.2] [ping:3] KILLED marcola-DsnipA. (14712544754286835018) [rank:3.3] [ping:3]";
+        public const string M2DoggeinfKill2 = "2026-09-27\t20:55:31\tDESKTOP-0SJTF3G\t1790534889\t13511\t4\t455855904\tdoggeinf (10484055460605013394) [rank:4.2] [ping:3] KILLED TomboTom (12882885702838419897) [rank:5.5] [ping:3]";
+
         // Synthetic: first rank sticks (killer at 5.3, later an assist at 5.2).
         public const string SynthSanchezKill = "2026-09-27\t21:00:10\tDESKTOP-0SJTF3G\t1790534889\t20001\t4\t456100000\tSanchezZzTV (111111111111111111) [rank:5.3] [ping:3] KILLED Alpha (222222222222222222) [rank:3.0] [ping:3]";
         public const string SynthSanchezAssist = "2026-09-27\t21:00:20\tDESKTOP-0SJTF3G\t1790534889\t20002\t4\t456110000\tBravo (333333333333333333) [rank:4.0] [ping:3] (ASSIST SanchezZzTV (111111111111111111) [rank:5.2] [ping:3]) KILLED Charlie (444444444444444444) [rank:2.0] [ping:3]";
@@ -39,7 +42,13 @@ namespace RotkAlive.Tests
 
         // Synthetic unknown shapes.
         public const string SynthTwoAssists = "2026-09-27\t21:00:30\tDESKTOP-0SJTF3G\t1790534889\t20003\t4\t456120000\tDelta (555555555555555555) [rank:6.1] [ping:3] (ASSIST Echo (666666666666666666) [rank:4.0] [ping:3]) (ASSIST Fox (777777777777777777) [rank:4.1] [ping:3]) KILLED Golf (888888888888888888) [rank:5.0] [ping:3] HEADSHOT";
-        public const string SynthDeathSuffix = "2026-09-27\t21:00:31\tDESKTOP-0SJTF3G\t1790534889\t20004\t4\t456121000\tDEATH Hotel (999999999999999999) [rank:2.0] [ping:3] GAS";
+        public const string SynthDeathSuffix = "2026-09-27\t21:00:31\tDESKTOP-0SJTF3G\t1790534889\t20004\t4\t456121000\tDEATH Hotel (999999999999999999) [rank:2.0] [ping:3] (gas)";
+
+        // Live session 2026-09-28, client run 1790595332: trailing friend flags.
+        public const string FriendStart = "2026-09-28\t13:50:15\tDESKTOP-0SJTF3G\t1790595332\t11225\t2\t516742000\tEVENT_START_MATCH";
+        public const string FriendHeadshot = "2026-09-28\t13:50:32\tDESKTOP-0SJTF3G\t1790595332\t11912\t4\t516759732\tTottinho (13856340092514558465) [rank:5.3] [ping:3] KILLED LA VACHE QUI RIT (594189586983620436) [rank:7.5] [ping:3] HEADSHOT KILLERFRIEND";
+        public const string FriendKill = "2026-09-28\t13:50:35\tDESKTOP-0SJTF3G\t1790595332\t11966\t4\t516763185\tLollo_458 (17778889448668183903) [rank:5.3] [ping:3] KILLED amzzor (810587526584891985) [rank:6.1] [ping:3] KILLERFRIEND";
+        public const string FriendAssist = "2026-09-28\t13:56:27\tDESKTOP-0SJTF3G\t1790595332\t14372\t4\t517114674\txiaobo (1342136868026594925) [rank:4.3] [ping:3] (ASSIST Lollo_458 (17778889448668183903) [rank:5.3] [ping:3]) KILLED MrAtchoum (13729704247481210739) [rank:3.2] [ping:3] ASSISTFRIEND";
         public const string SynthGarbage = "2026-09-27\t21:00:32\tDESKTOP-0SJTF3G\t1790534889\t20005\t4\t456122000\tsomething new the client started printing";
         public const string SynthShort = "2026-09-27\t21:00:33\tDESKTOP-0SJTF3G\tbroken";
     }

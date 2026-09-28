@@ -44,7 +44,7 @@ flowchart LR
 
 Planned files:
 
-- `build.cmd` compiles `dist\RotkAliveOverlay.exe` (a window app) and `dist\checks.exe` (a console app) using `/r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /win32manifest:app.manifest`.
+- `build.cmd` compiles `dist\TottiGol.exe` (a window app) and `dist\checks.exe` (a console app) using `/r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /win32manifest:app.manifest`.
 - `app.manifest` declares `asInvoker` (no admin rights) and per-monitor DPI awareness.
 - `src/Core/`: `LogLocator.cs`, `LogTailer.cs`, `LineParser.cs`, `MatchModel.cs`, `DiagLog.cs`. This code has no UI dependency, so the checks can use it.
 - `src/App/`: `Program.cs` (single instance via a named mutex), `OverlayForm.cs`, `Settings.cs` (reads an optional `overlay.ini` next to the exe).
@@ -153,7 +153,7 @@ stateDiagram-v2
 
 ## 8. Start, stop, diagnostics
 
-- **Start:** double-click `dist\RotkAliveOverlay.exe`, or a desktop shortcut to it. There is no installer and nothing runs at boot unless you add it to Startup yourself. A second launch just exits.
+- **Start:** double-click `dist\TottiGol.exe`, or a desktop shortcut to it. There is no installer and nothing runs at boot unless you add it to Startup yourself. A second launch just exits.
 - **Stop:** tray Exit or Ctrl+Alt+Q.
 - **Diagnostics:** `overlay.log` next to the exe, capped at 256 KB with one rollover. It records unparsed lines, posthumous events, file replacements, run-id changes, and match resets. The overlay never shows a dialog. Exceptions are caught at the timer boundary, logged, and shown as `!` in the header.
 

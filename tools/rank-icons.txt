@@ -1,0 +1,11 @@
+# Rank emblems in C:\Games\ROTK\Resources\Assets\ui_x64_2.pack2 (client h1z1-1.0.326.439939).
+# key = pack2 entry hash. Export with: dist\IconExtract.exe export tools\rank-icons.txt assets\ranks
+# Placement has no emblem in the UI archives; assets\ranks\placement.png is drawn by: dist\IconExtract.exe placement assets\ranks\placement.png
+bronze=D7BBE4C982A60D18
+silver=9790BBB93D04008B
+gold=2A63F1D654FF692D
+platinum=C795D7287E6ED823
+diamond=005FEBBEA3087154
+master=7D848D3EE1E10BCD
+royalty=735CAD2E7C41974E
+royalty-one=66AB1B9ADB83E820

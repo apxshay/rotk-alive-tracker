@@ -23,7 +23,9 @@ namespace RotkAlive.Tests
                 return Replay(args.Length > 1 ? args[1] : null);
 
             ParserChecks();
+            RankChecks();
             ModelChecks();
+            KillChecks();
             FileChecks();
 
             Console.WriteLine();
@@ -76,7 +78,90 @@ namespace RotkAlive.Tests
             LogEvent ds = Kf(Fixtures.SynthDeathSuffix);
             Check(ds.Kind == EventKind.VictimOnly && ds.Victim.Name == "Hotel", "DEATH with unknown suffix: victim only");
             Check(Kf(Fixtures.SynthGarbage).Kind == EventKind.Unparsed, "unknown text unparsed");
+
+            LogEvent fh = Kf(Fixtures.FriendHeadshot);
+            Check(fh.Kind == EventKind.Kill && fh.Killer.Name == "Tottinho" && fh.Victim.Name == "LA VACHE QUI RIT" && fh.Victim.Id == "594189586983620436",
+                "HEADSHOT KILLERFRIEND suffix parses as a kill");
+            LogEvent fk = Kf(Fixtures.FriendKill);
+            Check(fk.Kind == EventKind.Kill && fk.Killer.Name == "Lollo_458" && fk.Victim.Name == "amzzor", "KILLERFRIEND suffix parses as a kill");
+            LogEvent fa = Kf(Fixtures.FriendAssist);
+            Check(fa.Kind == EventKind.Kill && fa.Assist != null && fa.Assist.Name == "Lollo_458" && fa.Victim.Name == "MrAtchoum", "ASSISTFRIEND suffix parses as a kill with assist");
+            MatchSnapshot friends = Run(Mes(Fixtures.FriendStart), Kf(Fixtures.FriendHeadshot), Kf(Fixtures.FriendKill), Kf(Fixtures.FriendAssist));
+            Check(friends.Find("594189586983620436") == null && friends.Find("810587526584891985") == null && friends.Find("13729704247481210739") == null
+                  && friends.Find("13856340092514558465").Kills == 1 && friends.Find("17778889448668183903").Kills == 1 && friends.Unparsed == 0,
+                "friend-flag lines apply kills and deaths");
             Check(Kf(Fixtures.SynthShort).Kind == EventKind.Unparsed && !Kf(Fixtures.SynthShort).HasPrefix, "short line unparsed");
+        }
+
+        // ---------- ranks ----------
+
+        static void RankChecks()
+        {
+            Section("ranks");
+
+            RankInfo r71 = RankInfo.Parse("7.1");
+            Check(r71.Tier == 7 && r71.Division == 1 && r71.IsRoyaltyOne && r71.TierName == "ROYALTY ONE" && r71.IconKey == "royalty-one", "7.1 is Royalty One");
+            RankInfo r72 = RankInfo.Parse("7.2");
+            Check(r72.Tier == 7 && !r72.IsRoyaltyOne && r72.TierName == "ROYALTY" && r72.IconKey == "royalty", "7.2 is Royalty, not One");
+            RankInfo r51 = RankInfo.Parse("5.1");
+            Check(r51.Tier == 5 && r51.Division == 1 && r51.TierName == "DIAMOND", "5.1 is Diamond 1");
+            RankInfo r00 = RankInfo.Parse("0.0");
+            Check(r00.Tier == 0 && r00.Division == 0 && r00.TierName == "PLACEMENT" && r00.IconKey == "placement", "0.0 is Placement");
+            Check(RankInfo.Parse("0.4").Division == 0, "placement has no division");
+            Check(RankInfo.Parse("6.3").TierName == "MASTER" && RankInfo.Parse("1.5").TierName == "BRONZE", "tier names");
+            RankInfo big = RankInfo.Parse("9.2");
+            Check(big.OutOfRange && big.Tier == 7 && !big.IsRoyaltyOne, "tier above 7 falls back to Royalty");
+
+            Check(RankInfo.Compare(RankInfo.Parse("5.1"), RankInfo.Parse("5.5")) < 0, "5.1 ranks above 5.5");
+            Check(RankInfo.Compare(RankInfo.Parse("7.1"), RankInfo.Parse("7.2")) < 0, "Royalty One above Royalty 2");
+            Check(RankInfo.Compare(RankInfo.Parse("6.5"), RankInfo.Parse("5.1")) < 0, "higher tier wins over better division");
+            Check(RankInfo.Compare(RankInfo.Parse("1.5"), RankInfo.Parse("0.0")) < 0, "placement ranks last");
+
+            MatchSnapshot s = Run(
+                Mes(Fixtures.SynthStart3),
+                Kf(SynthKill(30001, "PlaceGuy", "9001", "0.0", "8001")),
+                Kf(SynthKill(30002, "DiamondFive", "9002", "5.5", "8002")),
+                Kf(SynthKill(30003, "RoyaltyThree", "9003", "7.3", "8003")),
+                Kf(SynthKill(30004, "DiamondOne", "9004", "5.1", "8004")),
+                Kf(SynthKill(30005, "RoyaltyOne", "9005", "7.1", "8005")),
+                Kf(SynthKill(30006, "DiamondOneB", "9006", "5.1", "8006")),
+                Kf(SynthKill(30007, "DiamondOneB", "9006", "5.1", "8007")));
+            Check(Names(s) == "RoyaltyOne 7.1, RoyaltyThree 7.3, DiamondOneB 5.1, DiamondOne 5.1, DiamondFive 5.5, PlaceGuy 0.0",
+                "sort: Royalty One first, division 1 first, more kills first, placement last: " + Names(s));
+        }
+
+        static string SynthKill(long seq, string killer, string killerId, string rank, string victimId)
+        {
+            return "2026-09-27\t21:01:00\tDESKTOP-0SJTF3G\t1790534889\t" + seq + "\t4\t" + (456200000 + seq) + "\t" +
+                   killer + " (" + killerId + ") [rank:" + rank + "] [ping:3] KILLED Victim" + victimId +
+                   " (" + victimId + ") [rank:3.3] [ping:3]";
+        }
+
+        // ---------- kills ----------
+
+        static void KillChecks()
+        {
+            Section("kills");
+
+            MatchSnapshot m2 = Run(
+                Mes(Fixtures.Start1), Kf(Fixtures.M1Kill1), Kf(Fixtures.M1Kill2),
+                Mes(Fixtures.Start2),
+                Kf(Fixtures.M2DoggeinfKill1), Kf(Fixtures.M2DaqzzKillsSurvivor), Kf(Fixtures.M2DoggeinfKill2),
+                Kf(Fixtures.M2PosthumousAssist), Kf(Fixtures.M2TytKillsKayzah), Kf(Fixtures.M2KayzahPosthumousKill));
+            AlivePlayer dogge = m2.Find("10484055460605013394");
+            Check(dogge != null && dogge.Kills == 2, "doggeinf has 2 kills");
+            Check(m2.KillsOf("8302646291024083693") == 1 && m2.Find("8302646291024083693") == null,
+                "kayzahMACHINE's kill after death counts, still dead");
+            Check(m2.KillsOf("7652327888861413276") == 1, "tYt_DSN2tap's kill counts although later killed");
+            Check(m2.KillsOf("10344157588046667421") == 0, "assist adds no kill");
+            AlivePlayer bara = m2.Find("422556523889196780");
+            Check(bara != null && bara.Kills == 1, "BARA NO STOP has 1 kill");
+            Check(m2.KillsOf("580198822161572562") == 0 && m2.KillsOf("4775357920797685090") == 0,
+                "second match start resets kill counts");
+
+            MatchSnapshot brief = Run(Mes(Fixtures.BriefStart), Kf(Fixtures.BriefAssist));
+            AlivePlayer horizon = brief.Find("14461580563613653473");
+            Check(horizon != null && horizon.Kills == 0 && brief.Find("6758572958123711573").Kills == 1, "assist alive with 0 kills, killer 1");
         }
 
         // ---------- model ----------
@@ -89,11 +174,12 @@ namespace RotkAlive.Tests
                 Mes(Fixtures.BriefStargetPacket), Mes(Fixtures.BriefStart),
                 Kf(Fixtures.BriefKill), Kf(Fixtures.BriefHeadshot), Kf(Fixtures.BriefAssist), Kf(Fixtures.BriefDeath));
             Check(brief.Phase == MatchPhase.Started, "brief match started");
-            Check(Names(brief) == "Screedy 5.4, theCITYisRED 5.3, Lekid 5.3, Horizon_ 5.3", "brief alive list sorted by rank then first seen: " + Names(brief));
+            Check(Names(brief) == "theCITYisRED 5.3, Lekid 5.3, Horizon_ 5.3, Screedy 5.4",
+                "brief alive list sorted by tier, division 1 first, kills, first seen: " + Names(brief));
             Check(brief.Find("5619943147552144769") == null && brief.Find("12808836654268928371") == null, "victim and DEATH never listed");
 
             MatchSnapshot m1 = Run(Mes(Fixtures.Start1), Kf(Fixtures.M1Kill1), Kf(Fixtures.M1Kill2), Kf(Fixtures.M1Kill3));
-            Check(Names(m1) == "lIlIlIlIlIlIlIlIlIlI 5.4, leodakappa 4.3, N4KL 4.1", "match 1 alive: " + Names(m1));
+            Check(Names(m1) == "lIlIlIlIlIlIlIlIlIlI 5.4, N4KL 4.1, leodakappa 4.3", "match 1 alive: " + Names(m1));
 
             MatchSnapshot m2 = Run(
                 Mes(Fixtures.Start1), Kf(Fixtures.M1Kill1), Kf(Fixtures.M1Kill2), Kf(Fixtures.M1Kill3),
@@ -154,6 +240,21 @@ namespace RotkAlive.Tests
                 LogSession mid = new LogSession(dir);
                 mid.Poll();
                 Check(Names(mid.Snapshot) == "Sous 3x Filtré 4.4", "overlay launched mid-match rebuilds from last start: " + Names(mid.Snapshot));
+
+                string dirKills = dir + "-kills";
+                Directory.CreateDirectory(dirKills);
+                try
+                {
+                    Write(Path.Combine(dirKills, LogLocator.MatchEndScreenName), Fixtures.Start1, Fixtures.Start2);
+                    Write(Path.Combine(dirKills, LogLocator.KillFeedName),
+                        Fixtures.M1Kill1, Fixtures.M2DoggeinfKill1, Fixtures.M2DoggeinfKill2);
+                    LogSession midKills = new LogSession(dirKills);
+                    midKills.Poll();
+                    AlivePlayer d = midKills.Snapshot.Find("10484055460605013394");
+                    Check(d != null && d.Kills == 2 && midKills.Snapshot.KillsOf("580198822161572562") == 0,
+                        "launched mid-match: kill counts rebuilt for the current match only");
+                }
+                finally { Directory.Delete(dirKills, true); }
 
                 // Start written to the other file after kills were already read.
                 string dir2 = dir + "-late";

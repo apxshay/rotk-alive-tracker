@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -30,6 +28,9 @@ namespace RotkAlive.App
         const uint MOD_ALT = 0x1;
         const uint MOD_CONTROL = 0x2;
         const uint MOD_NOREPEAT = 0x4000;
+        const int ULW_ALPHA = 0x2;
+        const byte AC_SRC_OVER = 0;
+        const byte AC_SRC_ALPHA = 1;
         const int HotkeyToggle = 1;
         const int HotkeyMove = 2;
         const int HotkeyQuit = 3;
@@ -40,15 +41,8 @@ namespace RotkAlive.App
         const int AgeRepaintEveryTicks = 10;
         const int LocateEveryTicks = 60;
 
-        static readonly Color Back = Color.FromArgb(16, 17, 20);
-        static readonly Color TextMain = Color.FromArgb(232, 232, 232);
-        static readonly Color TextDim = Color.FromArgb(150, 150, 150);
-        static readonly Color TextStale = Color.FromArgb(120, 120, 120);
-        static readonly Color Gold = Color.FromArgb(255, 204, 51);
-        static readonly Color Orange = Color.FromArgb(255, 145, 50);
-        static readonly Color Zero = Color.FromArgb(135, 135, 135);
-        static readonly Color Warn = Color.FromArgb(255, 110, 90);
-        static readonly Color MoveBorder = Color.FromArgb(255, 204, 51);
+        static readonly Color TrayBack = Color.FromArgb(16, 17, 20);
+        static readonly Color TrayGold = Color.FromArgb(255, 204, 51);
 
         readonly Settings settings;
         readonly Timer timer = new Timer();
@@ -63,21 +57,6 @@ namespace RotkAlive.App
         bool userHidden;
         bool firstRender = true;
 
-        float fontPx;
-        Font nameFont, nameBold, rankFont, rankBold, headFont, smallFont;
-        int pad, rowH, rankColW;
-
-        sealed class Row
-        {
-            public string Rank;
-            public string Text;
-            public Color Color;
-            public bool Bold;
-            public bool Small;
-        }
-
-        readonly List<Row> rows = new List<Row>();
-
         public OverlayForm(Settings settings)
         {
             this.settings = settings;
@@ -87,10 +66,7 @@ namespace RotkAlive.App
             ShowInTaskbar = false;
             TopMost = true;
             StartPosition = FormStartPosition.Manual;
-            BackColor = Back;
-            Opacity = settings.Opacity;
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
-                     ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            Size = new Size(1, 1);
 
             ContextMenuStrip menu = new ContextMenuStrip();
             showItem = new ToolStripMenuItem("Hide overlay  (Ctrl+Alt+O)", null, delegate { ToggleVisible(); });
@@ -139,6 +115,12 @@ namespace RotkAlive.App
             timer.Start();
         }
 
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            Render();
+        }
+
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             timer.Stop();
@@ -150,6 +132,10 @@ namespace RotkAlive.App
             tray.Dispose();
             base.OnFormClosed(e);
         }
+
+        // The layered window is painted only through UpdateLayeredWindow.
+        protected override void OnPaintBackground(PaintEventArgs e) { }
+        protected override void OnPaint(PaintEventArgs e) { }
 
         protected override void WndProc(ref Message m)
         {
@@ -228,59 +214,69 @@ namespace RotkAlive.App
             });
         }
 
-        // ---------- layout ----------
+        // ---------- rendering ----------
 
         void Render()
         {
             firstRender = false;
             Rectangle screen = Screen.PrimaryScreen.Bounds;
-            EnsureFonts(screen.Height);
-            BuildRows();
 
-            int maxW = Math.Max((int)(fontPx * 8), (int)(screen.Height * settings.MaxWidthScale));
-            int contentW = 0;
-            foreach (Row r in rows)
+            PanelBuilder.State st = new PanelBuilder.State();
+            st.HaveLogDir = session != null;
+            st.MissingDir = missingDir;
+            st.Errors = DiagLog.ErrorCount;
+            if (session != null)
             {
-                int w;
-                if (r.Rank != null)
-                    w = rankColW + TextRenderer.MeasureText(r.Text, r.Bold ? nameBold : nameFont).Width;
-                else
-                    w = TextRenderer.MeasureText(r.Text, RowFont(r)).Width;
-                if (w > contentW) contentW = w;
+                DateTime nowUtc = DateTime.UtcNow;
+                st.LogDir = session.LogDir;
+                st.Snapshot = session.Snapshot;
+                st.Stale = session.Snapshot.Phase != MatchPhase.NoData &&
+                           session.IsStale(nowUtc, TimeSpan.FromMinutes(settings.StaleMinutes));
+                st.Age = nowUtc - session.LastWriteUtc;
             }
-            int width = Math.Min(maxW, Math.Max((int)(fontPx * 8), contentW + pad * 2));
-            int height = pad * 2 + rows.Count * rowH;
+            PanelModel model = PanelBuilder.Build(st, settings, moveMode);
 
-            Point p = AnchoredLocation(screen, width, height);
-            Rectangle bounds = new Rectangle(p, new Size(width, height));
-            if (Bounds != bounds) Bounds = bounds;
-
-            UpdateTrayText();
-            Invalidate();
+            using (Bitmap bmp = OverlayRenderer.Render(model, screen.Height, settings))
+            {
+                Point p = AnchoredLocation(screen, bmp.Width, bmp.Height);
+                Rectangle bounds = new Rectangle(p, bmp.Size);
+                // Keep WinForms' idea of the bounds in step, otherwise Show() would shrink the window back.
+                if (Bounds != bounds) Bounds = bounds;
+                Push(bmp, p);
+            }
+            UpdateTrayText(model);
         }
 
-        void EnsureFonts(int screenHeight)
+        void Push(Bitmap bmp, Point location)
         {
-            float px = (float)Math.Max(9.0, Math.Round(screenHeight * settings.FontScale));
-            if (nameFont != null && Math.Abs(px - fontPx) < 0.5f) return;
-
-            fontPx = px;
-            DisposeFonts();
-            nameFont = new Font("Segoe UI", px, FontStyle.Regular, GraphicsUnit.Pixel);
-            nameBold = new Font("Segoe UI", px, FontStyle.Bold, GraphicsUnit.Pixel);
-            rankFont = new Font("Consolas", px, FontStyle.Regular, GraphicsUnit.Pixel);
-            rankBold = new Font("Consolas", px, FontStyle.Bold, GraphicsUnit.Pixel);
-            headFont = new Font("Segoe UI", px, FontStyle.Bold, GraphicsUnit.Pixel);
-            smallFont = new Font("Segoe UI", px * 0.85f, FontStyle.Regular, GraphicsUnit.Pixel);
-            pad = (int)Math.Ceiling(px * 0.4);
-            rowH = (int)Math.Ceiling(px * 1.3);
-            rankColW = TextRenderer.MeasureText("0.0", rankBold).Width + (int)Math.Ceiling(px * 0.3);
-        }
-
-        void DisposeFonts()
-        {
-            foreach (Font f in new Font[] { nameFont, nameBold, rankFont, rankBold, headFont, smallFont })
-                if (f != null) f.Dispose();
+            IntPtr screenDc = GetDC(IntPtr.Zero);
+            IntPtr memDc = CreateCompatibleDC(screenDc);
+            IntPtr hBitmap = IntPtr.Zero;
+            IntPtr oldBitmap = IntPtr.Zero;
+            try
+            {
+                hBitmap = bmp.GetHbitmap(Color.FromArgb(0));
+                oldBitmap = SelectObject(memDc, hBitmap);
+                SIZE size = new SIZE(bmp.Width, bmp.Height);
+                POINT source = new POINT(0, 0);
+                POINT top = new POINT(location.X, location.Y);
+                BLENDFUNCTION blend = new BLENDFUNCTION();
+                blend.BlendOp = AC_SRC_OVER;
+                blend.SourceConstantAlpha = 255;
+                blend.AlphaFormat = AC_SRC_ALPHA;
+                if (!UpdateLayeredWindow(Handle, screenDc, ref top, ref size, memDc, ref source, 0, ref blend, ULW_ALPHA))
+                    DiagLog.Once("ulw:" + Marshal.GetLastWin32Error(), "UpdateLayeredWindow failed: " + Marshal.GetLastWin32Error());
+            }
+            finally
+            {
+                ReleaseDC(IntPtr.Zero, screenDc);
+                if (hBitmap != IntPtr.Zero)
+                {
+                    SelectObject(memDc, oldBitmap);
+                    DeleteObject(hBitmap);
+                }
+                DeleteDC(memDc);
+            }
         }
 
         Point AnchoredLocation(Rectangle b, int w, int h)
@@ -303,7 +299,9 @@ namespace RotkAlive.App
         void SavePosition()
         {
             Rectangle b = Screen.PrimaryScreen.Bounds;
-            Rectangle w = Bounds;
+            RECT wr;
+            if (!GetWindowRect(Handle, out wr)) return;
+            Rectangle w = Rectangle.FromLTRB(wr.Left, wr.Top, wr.Right, wr.Bottom);
             double fx, fy;
             switch (settings.Anchor)
             {
@@ -317,145 +315,6 @@ namespace RotkAlive.App
             settings.Save();
         }
 
-        // ---------- content ----------
-
-        void BuildRows()
-        {
-            rows.Clear();
-
-            if (session == null)
-            {
-                Add(null, "Log folder not found", Warn, true, false);
-                Add(null, missingDir ?? LogLocator.DefaultRoot + "\\Logs", TextDim, false, true);
-                return;
-            }
-
-            MatchSnapshot s = session.Snapshot;
-            DateTime nowUtc = DateTime.UtcNow;
-            bool stale = s.Phase != MatchPhase.NoData &&
-                         session.IsStale(nowUtc, TimeSpan.FromMinutes(settings.StaleMinutes));
-
-            string extras = "";
-            if (s.Unparsed > 0) extras += " | " + s.Unparsed + " unparsed";
-            if (DiagLog.ErrorCount > 0) extras += " | !";
-
-            if (s.Phase == MatchPhase.NoData)
-            {
-                Add(null, "Waiting for game logs", TextMain, true, false);
-                Add(null, session.LogDir + extras, TextDim, false, true);
-                return;
-            }
-
-            string age = "last event " + Age(nowUtc - session.LastWriteUtc) + " ago" + extras;
-            string lastClock = s.LastEventTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
-
-            if (s.Phase == MatchPhase.WaitingForStart)
-            {
-                Add(null, stale ? "STALE | last event " + lastClock : "Waiting for match start", stale ? TextStale : TextMain, true, false);
-                Add(null, stale ? "waiting for match start" + extras : age, TextDim, false, true);
-                return;
-            }
-
-            string startClock = s.StartTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
-            if (s.Alive.Count == 0)
-            {
-                Add(null, stale ? "STALE | last event " + lastClock : "Match started " + startClock, stale ? TextStale : TextMain, true, false);
-                Add(null, "nobody revealed yet | " + (stale ? "start " + startClock + extras : age), TextDim, false, true);
-                return;
-            }
-
-            AlivePlayer top = s.Top;
-            string summary = "ALIVE " + s.Alive.Count + " | TOP " + top.RankText + " " + top.Name;
-            if (stale)
-            {
-                Add(null, "STALE | last event " + lastClock, TextStale, true, false);
-                Add(null, summary + extras, TextStale, false, true);
-            }
-            else
-            {
-                Add(null, summary, top.Rank >= settings.HighRank ? Gold : TextMain, true, false);
-                Add(null, age, TextDim, false, true);
-            }
-
-            int shown = Math.Min(s.Alive.Count, settings.MaxRows);
-            for (int i = 0; i < shown; i++)
-            {
-                AlivePlayer p = s.Alive[i];
-                Color c;
-                bool bold = false;
-                if (stale) c = TextStale;
-                else if (p.Rank >= settings.HighRank) { c = Gold; bold = true; }
-                else if (p.Rank >= settings.MidRank) c = Orange;
-                else if (p.Rank == 0.0) c = Zero;
-                else c = TextMain;
-                Add(p.RankText, p.Name, c, bold, false);
-            }
-
-            int hidden = s.Alive.Count - shown;
-            if (hidden > 0)
-                Add(null, "+" + hidden + " more (<= " + s.Alive[shown].RankText + ")", TextDim, false, true);
-        }
-
-        void Add(string rank, string text, Color color, bool bold, bool small)
-        {
-            Row r = new Row();
-            r.Rank = rank;
-            r.Text = text;
-            r.Color = color;
-            r.Bold = bold;
-            r.Small = small;
-            rows.Add(r);
-        }
-
-        Font RowFont(Row r)
-        {
-            if (r.Small) return smallFont;
-            if (r.Rank == null && r.Bold) return headFont;
-            return r.Bold ? nameBold : nameFont;
-        }
-
-        static string Age(TimeSpan t)
-        {
-            if (t < TimeSpan.Zero) t = TimeSpan.Zero;
-            if (t.TotalSeconds < 60) return ((int)t.TotalSeconds) + "s";
-            if (t.TotalMinutes < 60) return ((int)t.TotalMinutes) + "m";
-            return ((int)t.TotalHours) + "h";
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            Graphics g = e.Graphics;
-            g.Clear(Back);
-            if (nameFont == null) return;
-
-            const TextFormatFlags flags = TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine |
-                                          TextFormatFlags.EndEllipsis | TextFormatFlags.VerticalCenter |
-                                          TextFormatFlags.NoPadding;
-            int y = pad;
-            int innerW = ClientSize.Width - pad * 2;
-            foreach (Row r in rows)
-            {
-                if (r.Rank != null)
-                {
-                    TextRenderer.DrawText(g, r.Rank, r.Bold ? rankBold : rankFont,
-                        new Rectangle(pad, y, rankColW, rowH), r.Color, flags);
-                    TextRenderer.DrawText(g, r.Text, r.Bold ? nameBold : nameFont,
-                        new Rectangle(pad + rankColW, y, innerW - rankColW, rowH), r.Color, flags);
-                }
-                else
-                {
-                    TextRenderer.DrawText(g, r.Text, RowFont(r), new Rectangle(pad, y, innerW, rowH), r.Color, flags);
-                }
-                y += rowH;
-            }
-
-            if (moveMode)
-            {
-                using (Pen pen = new Pen(MoveBorder, 2))
-                    g.DrawRectangle(pen, 1, 1, ClientSize.Width - 2, ClientSize.Height - 2);
-            }
-        }
-
         // ---------- controls ----------
 
         void ToggleVisible()
@@ -465,6 +324,7 @@ namespace RotkAlive.App
             else
             {
                 Show();
+                Render();
                 AssertTopmost();
             }
             showItem.Text = userHidden ? "Show overlay  (Ctrl+Alt+O)" : "Hide overlay  (Ctrl+Alt+O)";
@@ -479,7 +339,7 @@ namespace RotkAlive.App
             moveItem.Checked = moveMode;
             if (!moveMode) SavePosition();
             if (userHidden && moveMode) ToggleVisible();
-            Invalidate();
+            Render();
         }
 
         void OpenDiagLog()
@@ -495,9 +355,9 @@ namespace RotkAlive.App
             }
         }
 
-        void UpdateTrayText()
+        void UpdateTrayText(PanelModel model)
         {
-            string text = rows.Count > 0 ? "ROTK alive: " + rows[0].Text : "ROTK alive overlay";
+            string text = "ROTK: " + model.Title + (model.SubLine != null ? " | " + model.SubLine : "");
             tray.Text = text.Length > 63 ? text.Substring(0, 63) : text;
         }
 
@@ -513,8 +373,8 @@ namespace RotkAlive.App
             {
                 using (Graphics g = Graphics.FromImage(bmp))
                 {
-                    g.Clear(Back);
-                    using (Brush b = new SolidBrush(Gold))
+                    g.Clear(TrayBack);
+                    using (Brush b = new SolidBrush(TrayGold))
                     {
                         g.FillRectangle(b, 3, 9, 2, 5);
                         g.FillRectangle(b, 7, 5, 2, 9);
@@ -524,6 +384,60 @@ namespace RotkAlive.App
                 return Icon.FromHandle(bmp.GetHicon());
             }
         }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct POINT
+        {
+            public int X, Y;
+            public POINT(int x, int y) { X = x; Y = y; }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct SIZE
+        {
+            public int Cx, Cy;
+            public SIZE(int cx, int cy) { Cx = cx; Cy = cy; }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct RECT
+        {
+            public int Left, Top, Right, Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        struct BLENDFUNCTION
+        {
+            public byte BlendOp;
+            public byte BlendFlags;
+            public byte SourceConstantAlpha;
+            public byte AlphaFormat;
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern bool UpdateLayeredWindow(IntPtr hwnd, IntPtr hdcDst, ref POINT pptDst, ref SIZE psize,
+            IntPtr hdcSrc, ref POINT pprSrc, int crKey, ref BLENDFUNCTION pblend, int dwFlags);
+
+        [DllImport("user32.dll")]
+        static extern IntPtr GetDC(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+        [DllImport("gdi32.dll")]
+        static extern IntPtr CreateCompatibleDC(IntPtr hDC);
+
+        [DllImport("gdi32.dll")]
+        static extern bool DeleteDC(IntPtr hdc);
+
+        [DllImport("gdi32.dll")]
+        static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
+
+        [DllImport("gdi32.dll")]
+        static extern bool DeleteObject(IntPtr hObject);
+
+        [DllImport("user32.dll")]
+        static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
 
         [DllImport("user32.dll")]
         static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);

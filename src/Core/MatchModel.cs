@@ -12,6 +12,8 @@ namespace RotkAlive
         public string Name;
         public double Rank;
         public string RankText;
+        public RankInfo RankInfo;
+        public int Kills;
         public int Order;
     }
 
@@ -25,6 +27,13 @@ namespace RotkAlive
         public int Posthumous;
         public int Unparsed;
         public readonly List<AlivePlayer> Alive = new List<AlivePlayer>();
+        public readonly Dictionary<string, int> KillsById = new Dictionary<string, int>();
+
+        public int KillsOf(string id)
+        {
+            int k;
+            return KillsById.TryGetValue(id, out k) ? k : 0;
+        }
 
         public AlivePlayer Top { get { return Alive.Count > 0 ? Alive[0] : null; } }
 
@@ -52,6 +61,7 @@ namespace RotkAlive
             public double Rank;
             public string RankText;
             public int Order;
+            public int Kills;
             public bool Dead;
         }
 
@@ -149,6 +159,7 @@ namespace RotkAlive
                 {
                     case EventKind.Kill:
                         Touch(players, ref order, e.Killer, true, e, snap);
+                        players[e.Killer.Id].Kills++;
                         if (e.Assist != null) Touch(players, ref order, e.Assist, true, e, snap);
                         Touch(players, ref order, e.Victim, false, e, snap);
                         break;
@@ -167,20 +178,21 @@ namespace RotkAlive
 
             foreach (KeyValuePair<string, PlayerState> kv in players)
             {
+                if (kv.Value.Kills > 0) snap.KillsById[kv.Key] = kv.Value.Kills;
                 if (kv.Value.Dead) continue;
                 AlivePlayer a = new AlivePlayer();
                 a.Id = kv.Key;
                 a.Name = kv.Value.Name;
                 a.Rank = kv.Value.Rank;
                 a.RankText = kv.Value.RankText;
+                a.RankInfo = RankInfo.Parse(kv.Value.RankText);
+                a.Kills = kv.Value.Kills;
                 a.Order = kv.Value.Order;
+                if (a.RankInfo.OutOfRange)
+                    DiagLog.Once("rank:" + a.RankText, "rank " + a.RankText + " is above Royalty; shown with the Royalty badge");
                 snap.Alive.Add(a);
             }
-            snap.Alive.Sort(delegate(AlivePlayer x, AlivePlayer y)
-            {
-                int c = y.Rank.CompareTo(x.Rank);
-                return c != 0 ? c : x.Order.CompareTo(y.Order);
-            });
+            snap.Alive.Sort(CompareAlive);
             return snap;
         }
 
@@ -215,6 +227,14 @@ namespace RotkAlive
                                   e.Time.ToString("HH:mm:ss", CultureInfo.InvariantCulture) + " seq " + e.Seq +
                                   " after dying in this match; stays dead");
             }
+        }
+
+        public static int CompareAlive(AlivePlayer x, AlivePlayer y)
+        {
+            int c = RankInfo.Compare(x.RankInfo, y.RankInfo);
+            if (c != 0) return c;
+            c = y.Kills.CompareTo(x.Kills);
+            return c != 0 ? c : x.Order.CompareTo(y.Order);
         }
 
         static int CompareBySeq(LogEvent a, LogEvent b)

@@ -8,12 +8,15 @@ namespace RotkAlive.App
     static class Program
     {
         [STAThread]
-        static void Main()
+        static int Main(string[] args)
         {
+            if (args.Length >= 2 && args[0] == "--preview")
+                return Preview.Run(args);
+
             bool created;
             using (Mutex mutex = new Mutex(true, @"Local\RotkAliveOverlay.SingleInstance", out created))
             {
-                if (!created) return;
+                if (!created) return 0;
 
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
                 DiagLog.Init(Path.Combine(baseDir, "overlay.log"));
@@ -36,6 +39,7 @@ namespace RotkAlive.App
                 DiagLog.Write("overlay stopped");
                 GC.KeepAlive(mutex);
             }
+            return 0;
         }
     }
 }

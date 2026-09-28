@@ -45,15 +45,18 @@ namespace RotkAlive
         const string PlayerFormat =
             @"(?<{0}name>(?:(?!\[rank:).)+?) \((?<{0}id>\d+)\) \[rank:(?<{0}rank>\d+(?:\.\d+)?)\] \[ping:(?<{0}ping>-?\d+)\]";
 
+        // Trailing flags after the last player, e.g. "HEADSHOT", "KILLERFRIEND", "HEADSHOT KILLERFRIEND", "ASSISTFRIEND".
+        const string Flags = @"(?<flags>(?: [A-Z]+)*)";
+
         static readonly Regex KillRx = new Regex(
-            "^" + P("k") + @"(?: \(ASSIST " + P("a") + @"\))? KILLED " + P("v") + "(?: HEADSHOT)?$",
+            "^" + P("k") + @"(?: \(ASSIST " + P("a") + @"\))? KILLED " + P("v") + Flags + "$",
             RegexOptions.CultureInvariant);
 
-        static readonly Regex DeathRx = new Regex("^DEATH " + P("v") + "$", RegexOptions.CultureInvariant);
+        static readonly Regex DeathRx = new Regex("^DEATH " + P("v") + Flags + "$", RegexOptions.CultureInvariant);
 
         static readonly Regex DeathPrefixRx = new Regex("^DEATH " + P("v"), RegexOptions.CultureInvariant);
 
-        static readonly Regex VictimTailRx = new Regex("^" + P("v") + "(?: HEADSHOT)?$", RegexOptions.CultureInvariant);
+        static readonly Regex VictimTailRx = new Regex("^" + P("v") + Flags + "$", RegexOptions.CultureInvariant);
 
         static string P(string prefix)
         {
