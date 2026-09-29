@@ -3,8 +3,9 @@ using System.Globalization;
 
 namespace RotkAlive.App
 {
-    // Turns the match state into what the panel shows. No rank numbers are shown anywhere:
-    // the emblem carries the tier, and the right-hand number is the player's kills this match.
+    // Turns the match state into what the panel shows. The emblem is the in-game tier.
+    // The gold column is the season ladder place, the dim column is season K/D, and the
+    // far-right number is kills this match.
     static class PanelBuilder
     {
         public sealed class State
@@ -18,7 +19,7 @@ namespace RotkAlive.App
             public int Errors;
         }
 
-        public static PanelModel Build(State st, Settings settings, bool moveMode)
+        public static PanelModel Build(State st, Settings settings, bool moveMode, LadderCache ladder)
         {
             PanelModel m = new PanelModel();
             m.MoveMode = moveMode;
@@ -72,6 +73,14 @@ namespace RotkAlive.App
                 r.Name = DisplayName(p.Name, settings);
                 r.Kills = p.Kills;
                 r.Color = OverlayRenderer.TierColor(r.IconKey);
+                LadderStats stats = ladder == null ? null : ladder.Find(p.Name);
+                if (stats != null && !stats.Miss && stats.HasRank)
+                {
+                    r.HasLadderRank = true;
+                    r.LadderRank = stats.Rank;
+                }
+                if (stats != null && !stats.Miss && stats.HasKd)
+                    r.SideText = stats.KdText;
                 m.Rows.Add(r);
             }
 

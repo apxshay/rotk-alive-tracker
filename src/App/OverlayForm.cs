@@ -66,6 +66,8 @@ namespace RotkAlive.App
         List<ButtonRect> buttons = new List<ButtonRect>();
         ButtonRect pressed;
         SettingsForm settingsForm;
+        readonly LadderService ladder = new LadderService();
+        int ladderDrawn;
 
         public OverlayForm(Settings settings)
         {
@@ -97,6 +99,7 @@ namespace RotkAlive.App
 
             timer.Interval = TickMs;
             timer.Tick += OnTick;
+            ladder.Start();
 
             SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         }
@@ -144,6 +147,7 @@ namespace RotkAlive.App
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             timer.Stop();
+            ladder.Stop();
             SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             if (settingsForm != null && !settingsForm.IsDisposed) settingsForm.Close();
             UnregisterHotKey(Handle, HotkeyToggle);
@@ -239,8 +243,11 @@ namespace RotkAlive.App
                 if (session == null && (tick == 1 || tick % LocateEveryTicks == 0)) Locate();
 
                 bool changed = session != null && session.Poll();
+                if (session != null)
+                    ladder.Observe(session.Snapshot, settings.MaxRows, settings.LadderRegion, settings.LadderMode);
                 bool hintExpired = hintShown && !HintActive();
-                if (changed || firstRender || hintExpired || tick % AgeRepaintEveryTicks == 0) Render();
+                bool ladderChanged = ladder.Generation != ladderDrawn;
+                if (changed || firstRender || hintExpired || ladderChanged || tick % AgeRepaintEveryTicks == 0) Render();
                 if (tick % TopmostEveryTicks == 0) AssertTopmost();
             }
             catch (Exception ex)
@@ -300,7 +307,9 @@ namespace RotkAlive.App
                            session.IsStale(nowUtc, TimeSpan.FromMinutes(settings.StaleMinutes));
                 st.Age = nowUtc - session.LastWriteUtc;
             }
-            PanelModel model = PanelBuilder.Build(st, settings, moveMode);
+            int seenLadder = ladder.Generation;
+            PanelModel model = PanelBuilder.Build(st, settings, moveMode, ladder.Cache);
+            ladderDrawn = seenLadder;
             hintShown = !moveMode && HintActive();
             if (hintShown) model.Hint = HintText();
 

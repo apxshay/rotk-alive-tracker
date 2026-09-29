@@ -31,6 +31,7 @@ namespace RotkAlive.Tests
             FileChecks();
             SettingsChecks();
             ToolbarChecks();
+            LadderChecks();
 
             Console.WriteLine();
             Console.WriteLine("passed " + passed + ", failed " + failed);
@@ -374,6 +375,18 @@ namespace RotkAlive.Tests
                 back.Y = 0.8;
                 back.ResetPosition();
                 Check(back.Anchor == Settings.DefaultAnchor && back.X == Settings.DefaultX && back.Y == Settings.DefaultY, "reset position restores the default corner");
+
+                File.WriteAllText(ini, "X=0.2\r\n", Utf8);
+                Settings ladderDefaults = Settings.Load(ini);
+                Check(ladderDefaults.LadderRegion == "eu" && ladderDefaults.LadderMode == "solo", "missing ladder keys fall back to eu solo");
+                ladderDefaults.LadderRegion = "na";
+                ladderDefaults.LadderMode = "duos";
+                ladderDefaults.Save();
+                Settings ladderBack = Settings.Load(ini);
+                Check(ladderBack.LadderRegion == "na" && ladderBack.LadderMode == "duos", "ladder region and mode round-trip");
+                File.WriteAllText(ini, "LadderRegion=EU-1\r\nLadderMode=\r\n", Utf8);
+                Settings ladderBad = Settings.Load(ini);
+                Check(ladderBad.LadderRegion == "eu" && ladderBad.LadderMode == "solo", "ladder region and mode reject anything that is not a short word");
             }
             finally
             {
@@ -479,6 +492,110 @@ namespace RotkAlive.Tests
         static void Section(string name)
         {
             Console.WriteLine("-- " + name);
+        }
+
+        static void LadderChecks()
+        {
+            Section("ladder");
+
+            const string tottinho = "{\"countedGames\":10,\"rows\":[{\"displayName\":\"Tottinho\",\"rank\":459,\"kills\":658,\"deaths\":363,\"averagePlacement\":86.6,\"score\":1786000}]}";
+            LadderStats hit;
+            Check(LadderStats.TryParse(tottinho, "Tottinho", out hit) && hit != null && !hit.Miss, "Tottinho parses");
+            Check(hit.HasRank && hit.Rank == 459, "Tottinho ladder place is 459");
+            Check(hit.HasKd && hit.KdText == "1.81", "Tottinho K/D is 1.81 with a dot under it-IT");
+            LadderStats lower;
+            Check(LadderStats.TryParse(tottinho, "tottinho", out lower) && !lower.Miss && lower.Rank == 459, "exact match ignores case");
+
+            const string substring = "{\"rows\":["
+                + "{\"displayName\":\"Tottinho\",\"rank\":459,\"kills\":658,\"deaths\":363},"
+                + "{\"displayName\":\"Totti9809\",\"rank\":32160,\"kills\":4,\"deaths\":10},"
+                + "{\"displayName\":\"TottiFaZeClan\",\"rank\":40360,\"kills\":0,\"deaths\":6}"
+                + "]}";
+            LadderStats totinho;
+            Check(LadderStats.TryParse(substring, "Totinho", out totinho) && totinho.Miss, "Totinho is not an exact match for Tottinho");
+            LadderStats totti;
+            Check(LadderStats.TryParse(substring, "Totti", out totti) && totti.Miss, "a substring query with several rows is not a match");
+            LadderStats exact;
+            Check(LadderStats.TryParse(substring, "Tottinho", out exact) && !exact.Miss && exact.Rank == 459, "exact name still wins inside a substring payload");
+
+            const string twins = "{\"rows\":[{\"displayName\":\"Tottinho\",\"rank\":1,\"kills\":2,\"deaths\":1},{\"displayName\":\"tottinho\",\"rank\":2,\"kills\":2,\"deaths\":1}]}";
+            LadderStats twin;
+            Check(LadderStats.TryParse(twins, "Tottinho", out twin) && twin.Miss, "two exact rows show nothing");
+
+            LadderStats zero;
+            Check(LadderStats.TryParse("{\"rows\":[{\"displayName\":\"Ace\",\"rank\":3,\"kills\":5,\"deaths\":0}]}", "Ace", out zero)
+                && zero.KdText == "5.00", "zero deaths shows the kill count");
+            LadderStats junk;
+            Check(!LadderStats.TryParse("{", "Ace", out junk), "broken json is a transport-style failure, not a miss");
+
+            DateTime start = new DateTime(2026, 9, 29, 12, 0, 0);
+            MatchSnapshot early = Started(start, start.AddMinutes(4).AddSeconds(59));
+            Check(!LadderQueue.GateOpen(early), "gate stays shut at 4:59 of log time");
+            MatchSnapshot open = Started(start, start.AddMinutes(5));
+            Check(LadderQueue.GateOpen(open), "gate opens at 5:00 of log time");
+            MatchSnapshot waiting = Started(start, start.AddMinutes(20));
+            waiting.Phase = MatchPhase.WaitingForStart;
+            Check(!LadderQueue.GateOpen(waiting), "gate stays shut before the match starts");
+
+            DateTime t0 = new DateTime(2026, 9, 29, 18, 0, 0, DateTimeKind.Utc);
+            Check(LadderQueue.Due(t0, DateTime.MinValue, false), "the first lookup does not wait");
+            Check(!LadderQueue.Due(t0.AddSeconds(14), t0, false), "14 seconds is not enough");
+            Check(LadderQueue.Due(t0.AddSeconds(15), t0, false), "15 seconds opens the next lookup");
+            Check(!LadderQueue.Due(t0.AddSeconds(119), t0, true), "a 429 holds the queue for two minutes");
+            Check(LadderQueue.Due(t0.AddSeconds(120), t0, true), "two minutes after a 429 the queue moves");
+
+            AlivePlayer royalty = Player("Royal", "7.1");
+            AlivePlayer master = Player("Tottinho", "6.2");
+            AlivePlayer gold = Player("Camper", "3.1");
+            MatchSnapshot snap = Started(start, start.AddMinutes(12));
+            snap.Alive.Add(royalty);
+            snap.Alive.Add(master);
+            snap.Alive.Add(gold);
+            LadderCache cache = new LadderCache();
+            Check(LadderQueue.NextName(LadderQueue.Visible(snap, 15), cache) == "Royal", "the highest in-game rank is first");
+
+            cache.Store("Royal", LadderStats.Hit(18, 3.40));
+            List<AlivePlayer> stillUp = new List<AlivePlayer>();
+            stillUp.Add(master);
+            stillUp.Add(gold);
+            Check(LadderQueue.NextName(stillUp, cache) == "Tottinho", "a player who left the visible list is not fetched");
+
+            List<AlivePlayer> jumped = new List<AlivePlayer>();
+            jumped.Add(royalty);
+            jumped.Add(master);
+            jumped.Add(gold);
+            cache.Store("Tottinho", LadderStats.Missed());
+            Check(LadderQueue.NextName(jumped, cache) == "Camper", "a cached miss is not asked again");
+            AlivePlayer higher = Player("Vara", "7.1");
+            jumped.Insert(0, higher);
+            Check(LadderQueue.NextName(jumped, cache) == "Vara", "a new higher rank jumps the queue");
+
+            AlivePlayer hidden = Player("Hidden", "1.1");
+            snap.Alive.Add(hidden);
+            cache.Store("Camper", LadderStats.Hit(18440, 1.05));
+            cache.Store("Vara", LadderStats.Hit(12, 4.20));
+            Check(LadderQueue.NextName(LadderQueue.Visible(snap, 3), cache) == null, "names under +N MORE are not fetched");
+            Check(LadderQueue.NextName(LadderQueue.Visible(snap, 15), cache) == "Hidden", "a name is fetched once a death brings it on screen");
+        }
+
+        static MatchSnapshot Started(DateTime start, DateTime last)
+        {
+            MatchSnapshot s = new MatchSnapshot();
+            s.Phase = MatchPhase.Started;
+            s.HasLastEvent = true;
+            s.StartTime = start;
+            s.LastEventTime = last;
+            return s;
+        }
+
+        static AlivePlayer Player(string name, string rank)
+        {
+            AlivePlayer p = new AlivePlayer();
+            p.Id = name;
+            p.Name = name;
+            p.RankText = rank;
+            p.RankInfo = RankInfo.Parse(rank);
+            return p;
         }
 
         static void Check(bool ok, string what)

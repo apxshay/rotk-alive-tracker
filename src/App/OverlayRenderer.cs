@@ -13,6 +13,10 @@ namespace RotkAlive.App
         public string Name;
         public int Kills;
         public Color Color;
+        public bool HasLadderRank;
+        public int LadderRank;
+        // Season K/D, or another fixed right-hand figure in a preview.
+        public string SideText;
     }
 
     sealed class PanelModel
@@ -74,7 +78,9 @@ namespace RotkAlive.App
         {
             public float U;
             public int Width, Pad, Frame, TitleH, SubH, RowH, Gap, FooterH, IconH, ToolH, ToolHintH, HintH;
-            public Font Title, Status, Sub, Name, NameFallback, Kills, Footer, Button, Hint;
+            public float RankW, SideW, KillsW;
+            public float AfterIcon, AfterRank, BeforeSide, Edge;
+            public Font Title, Status, Sub, Name, NameFallback, Kills, Footer, Button, Hint, Rank, Side;
         }
 
         public static Bitmap Render(PanelModel m, int screenHeight, Settings s)
@@ -154,7 +160,7 @@ namespace RotkAlive.App
             }
             finally
             {
-                foreach (Font f in new Font[] { k.Title, k.Status, k.Sub, k.Name, k.NameFallback, k.Kills, k.Footer, k.Button, k.Hint })
+                foreach (Font f in new Font[] { k.Title, k.Status, k.Sub, k.Name, k.NameFallback, k.Kills, k.Footer, k.Button, k.Hint, k.Rank, k.Side })
                     if (f != null) f.Dispose();
             }
         }
@@ -164,7 +170,11 @@ namespace RotkAlive.App
             Metrics k = new Metrics();
             float u = (float)Math.Max(9.0, screenHeight * s.FontScale);
             k.U = u;
-            k.Width = (int)Math.Round(Math.Max(u * 14, screenHeight * s.PanelWidthScale));
+            k.KillsW = u * 2.4f;
+            k.AfterIcon = u * 0.22f;
+            k.AfterRank = u * 0.16f;
+            k.BeforeSide = u * 0.16f;
+            k.Edge = u * 0.35f;
             k.Frame = Math.Max(2, (int)Math.Round(u * 0.22));
             k.Pad = (int)Math.Round(u * 0.85);
             k.TitleH = (int)Math.Round(u * 2.1);
@@ -184,10 +194,73 @@ namespace RotkAlive.App
             k.Name = new Font(oswald, u * 1.3f, FontStyle.Bold, GraphicsUnit.Pixel);
             k.NameFallback = new Font(Assets.FallbackFamily, u * 1.1f, FontStyle.Bold, GraphicsUnit.Pixel);
             k.Kills = new Font(oswald, u * 1.35f, FontStyle.Bold, GraphicsUnit.Pixel);
+            k.Rank = new Font(oswald, u * 1.02f, FontStyle.Bold, GraphicsUnit.Pixel);
+            k.Side = new Font(oswald, u * 0.95f, FontStyle.Bold, GraphicsUnit.Pixel);
             k.Footer = new Font(oswald, u * 0.9f, FontStyle.Bold, GraphicsUnit.Pixel);
             k.Button = new Font(oswald, u * 0.95f, FontStyle.Bold, GraphicsUnit.Pixel);
             k.Hint = new Font(oswald, u * 0.8f, FontStyle.Bold, GraphicsUnit.Pixel);
+
+            using (Bitmap probe = new Bitmap(1, 1))
+            using (Graphics g = Graphics.FromImage(probe))
+            {
+                g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                // Columns hug the widest figure. 8 is the wide digit. K/D stays under 10.00 almost always.
+                k.RankW = TextWidth(g, "#88888", k.Rank) + u * 0.12f;
+                k.SideW = TextWidth(g, "10.00", k.Side) + u * 0.1f;
+            }
+
+            int baseWidth = (int)Math.Round(Math.Max(u * 14, screenHeight * s.PanelWidthScale));
+            float threeLetters;
+            using (Bitmap probe = new Bitmap(1, 1))
+            using (Graphics g = Graphics.FromImage(probe))
+            {
+                g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                threeLetters = TextWidth(g, "NNN", k.Name);
+            }
+            float room = NameRoom(k, baseWidth);
+            float target = OldNameRoom(k, baseWidth) - threeLetters;
+            k.Width = baseWidth + (int)Math.Ceiling(Math.Max(0, target - room));
             return k;
+        }
+
+        static float TextWidth(Graphics g, string text, Font font)
+        {
+            using (StringFormat sf = new StringFormat(StringFormatFlags.NoWrap | StringFormatFlags.MeasureTrailingSpaces))
+            {
+                sf.Alignment = StringAlignment.Near;
+                sf.LineAlignment = StringAlignment.Center;
+                return g.MeasureString(text, font, PointF.Empty, sf).Width;
+            }
+        }
+
+        // Name width at the old layout: medal, name, this-match kills. Used so the new columns
+        // cost about three letters and no more.
+        static float OldNameRoom(Metrics k, int panelWidth)
+        {
+            float cardX, cardRight, iconW;
+            RowEnds(k, panelWidth, out cardX, out cardRight, out iconW);
+            float nameX = cardX + k.U * 0.45f + iconW + k.U * 0.7f;
+            float killsX = cardRight - k.U * 0.7f - k.KillsW;
+            return killsX - nameX - k.U * 0.3f;
+        }
+
+        static float NameRoom(Metrics k, int panelWidth)
+        {
+            float cardX, cardRight, iconW;
+            RowEnds(k, panelWidth, out cardX, out cardRight, out iconW);
+            float nameX = cardX + k.U * 0.45f + iconW + k.AfterIcon + k.RankW + k.AfterRank;
+            float killsX = cardRight - k.Edge - k.KillsW;
+            float sideX = killsX - k.BeforeSide - k.SideW;
+            return sideX - nameX - k.BeforeSide;
+        }
+
+        static void RowEnds(Metrics k, int panelWidth, out float cardX, out float cardRight, out float iconW)
+        {
+            float x = k.Frame + k.Pad;
+            float inner = panelWidth - 2 * x;
+            cardX = x - k.Pad * 0.35f;
+            cardRight = cardX + inner + k.Pad * 0.7f;
+            iconW = k.IconH * (122f / 120f);
         }
 
         static void DrawButton(Graphics g, Metrics k, ButtonRect b)
@@ -253,13 +326,22 @@ namespace RotkAlive.App
             }
 
             Color c = stale ? StaleText : r.Color;
-            float killsW = k.U * 2.4f;
-            float nameX = iconX + iconW + k.U * 0.7f;
-            RectangleF killsRect = new RectangleF(card.Right - k.U * 0.7f - killsW, card.Y, killsW, card.Height);
-            RectangleF nameRect = new RectangleF(nameX, card.Y, killsRect.X - nameX - k.U * 0.3f, card.Height);
+            Color rankColor = stale ? StaleText : GoldText;
+            Color sideColor = stale ? StaleText : DimText;
+            float rankX = iconX + iconW + k.AfterIcon;
+            RectangleF rankRect = new RectangleF(rankX, card.Y, k.RankW, card.Height);
+            float nameX = rankRect.Right + k.AfterRank;
+            RectangleF killsRect = new RectangleF(card.Right - k.Edge - k.KillsW, card.Y, k.KillsW, card.Height);
+            RectangleF sideRect = new RectangleF(killsRect.X - k.BeforeSide - k.SideW, card.Y, k.SideW, card.Height);
+            float nameW = sideRect.X - nameX - k.BeforeSide;
+            if (nameW < 0) nameW = 0;
+            RectangleF nameRect = new RectangleF(nameX, card.Y, nameW, card.Height);
 
             Font nameFont = Assets.OswaldCovers(r.Name) ? k.Name : k.NameFallback;
+            if (r.HasLadderRank)
+                DrawText(g, "#" + r.LadderRank.ToString(System.Globalization.CultureInfo.InvariantCulture), k.Rank, rankColor, rankRect, StringAlignment.Far);
             DrawText(g, r.Name, nameFont, c, nameRect, StringAlignment.Near);
+            DrawText(g, r.SideText, k.Side, sideColor, sideRect, StringAlignment.Far);
             DrawText(g, r.Kills.ToString(System.Globalization.CultureInfo.InvariantCulture), k.Kills, c, killsRect, StringAlignment.Far);
         }
 

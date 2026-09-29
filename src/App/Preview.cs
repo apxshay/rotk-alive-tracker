@@ -7,7 +7,8 @@ namespace RotkAlive.App
 {
     // TottiGol.exe --preview out.png [screenHeight] [state] [opacity]
     // Renders the panel with built-in sample players, for comparing against the design without a match.
-    // state: list (default), stale, empty, waiting, nologs, edit, hint
+    // state: list (default), stale, empty, waiting, nologs, edit, hint, place
+    // place draws average placement where K/D sits. list draws season K/D.
     // opacity: 0.15 to 1, default from Settings; edit mode is always drawn solid, as on screen.
     static class Preview
     {
@@ -19,7 +20,8 @@ namespace RotkAlive.App
             string state = args.Length > 3 ? args[3] : "list";
             bool edit = state == "edit";
             bool hint = state == "hint";
-            if (edit || hint) state = "list";
+            bool placement = state == "place";
+            if (edit || hint || placement) state = "list";
 
             Settings settings = Settings.Defaults();
             if (args.Length > 4)
@@ -40,6 +42,7 @@ namespace RotkAlive.App
             s.HasLastEvent = true;
             s.StartTime = new DateTime(2026, 9, 28, 21, 49, 56);
             s.LastEventTime = new DateTime(2026, 9, 28, 21, 57, 33);
+            LadderCache ladder = new LadderCache();
             if (state == "list" || state == "stale")
             {
                 Add(s, "Vara", "7.1", 3);
@@ -53,11 +56,28 @@ namespace RotkAlive.App
                 Add(s, "Kayzah", "0.0", 0);
                 Add(s, "Ютуб", "4.1", 1);
                 for (int i = 0; i < 7; i++) Add(s, "Filler" + i, "3.4", 0);
+                ladder.Store("Vara", LadderStats.Hit(18, 3.40));
+                ladder.Store("Boxy_Ace", LadderStats.Hit(18440, 1.05));
+                ladder.Store("Lekid", LadderStats.Hit(459, 1.81));
+                ladder.Store("Screedy", LadderStats.Hit(2104, 0.94));
+                ladder.Store("Sous 3x Filtré", LadderStats.Hit(880, 1.40));
+                ladder.Store("Cyb", LadderStats.Hit(12040, 0.62));
+                ladder.Store("Ютуб", LadderStats.Hit(640, 2.10));
             }
             s.Alive.Sort(MatchModel.CompareAlive);
 
             st.Snapshot = s;
-            PanelModel model = PanelBuilder.Build(st, settings, edit);
+            PanelModel model = PanelBuilder.Build(st, settings, edit, ladder);
+            if (placement)
+            {
+                SetSide(model, "VARA", "4.2");
+                SetSide(model, "BOXY_ACE", "96.0");
+                SetSide(model, "LEKID", "86.6");
+                SetSide(model, "SCREEDY", "40.1");
+                SetSide(model, "SOUS 3X FILTRÉ", "55.0");
+                SetSide(model, "CYB", "110.4");
+                SetSide(model, "ЮТУБ", "22.8");
+            }
             if (hint) model.Hint = "CTRL+ALT+P EDIT  ·  CTRL+ALT+O HIDE";
             float alpha = edit ? 1f : (float)settings.Opacity;
 
@@ -80,6 +100,14 @@ namespace RotkAlive.App
             }
             Console.WriteLine("wrote " + outPath);
             return 0;
+        }
+
+        static void SetSide(PanelModel model, string name, string side)
+        {
+            foreach (PanelRow row in model.Rows)
+            {
+                if (row.Name == name) row.SideText = side;
+            }
         }
 
         static void Add(MatchSnapshot s, string name, string rank, int kills)

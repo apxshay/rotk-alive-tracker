@@ -29,6 +29,8 @@ namespace RotkAlive.App
         public double Opacity = DefaultOpacity;
         public bool ShowHints = true;
         public double PanelOpacity = 0.88;
+        public string LadderRegion = "eu";
+        public string LadderMode = "solo";
 
         string path;
 
@@ -87,6 +89,8 @@ namespace RotkAlive.App
                 case "opacity": Opacity = Num(value, Opacity); break;
                 case "showhints": ShowHints = Num(value, ShowHints ? 1 : 0) != 0; break;
                 case "panelopacity": PanelOpacity = Num(value, PanelOpacity); break;
+                case "ladderregion": LadderRegion = value; break;
+                case "laddermode": LadderMode = value; break;
             }
         }
 
@@ -107,6 +111,21 @@ namespace RotkAlive.App
             MaxRows = Math.Max(1, Math.Min(60, MaxRows));
             StaleMinutes = Math.Max(0.5, StaleMinutes);
             PanelOpacity = Math.Max(0.1, Math.Min(1.0, PanelOpacity));
+            LadderRegion = Token(LadderRegion, "eu");
+            LadderMode = Token(LadderMode, "solo");
+        }
+
+        static string Token(string value, string fallback)
+        {
+            if (string.IsNullOrEmpty(value)) return fallback;
+            string t = value.Trim().ToLowerInvariant();
+            if (t.Length == 0 || t.Length > 8) return fallback;
+            for (int i = 0; i < t.Length; i++)
+            {
+                char c = t[i];
+                if (c < 'a' || c > 'z') return fallback;
+            }
+            return t;
         }
 
         static double Num(string s, double fallback)
@@ -143,6 +162,9 @@ namespace RotkAlive.App
             sb.AppendLine("ShowHints=" + (ShowHints ? "1" : "0"));
             sb.AppendLine("# Background only, on top of Opacity.");
             sb.AppendLine("PanelOpacity=" + F(PanelOpacity));
+            sb.AppendLine("# Public ladder lookups. Region: eu, na, oce, au. Mode: solo, duos.");
+            sb.AppendLine("LadderRegion=" + LadderRegion);
+            sb.AppendLine("LadderMode=" + LadderMode);
             try
             {
                 File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
